@@ -222,6 +222,14 @@ export function registerIpcHandlers(): void {
     return { ok, status: await setupService.getStatus() }
   })
 
+  ipcMain.handle(IPC_CHANNELS.DISPLAYS_LIST, () => windowManager.listDisplays())
+  ipcMain.handle(IPC_CHANNELS.DISPLAYS_MOVE, (_event, id: number) => windowManager.moveCompanionToDisplay(id))
+  ipcMain.handle(IPC_CHANNELS.BOREDOM_GET_ENABLED, () => consciousnessService.isBoredomEnabled())
+  ipcMain.handle(IPC_CHANNELS.BOREDOM_SET_ENABLED, (_event, enabled: boolean) => {
+    consciousnessService.setBoredomEnabled(!!enabled)
+    return !!enabled
+  })
+
   ipcMain.handle(IPC_CHANNELS.COMPANION_SET_HIT_THROUGH, (_event, ignore: boolean) => {
     windowManager.setCompanionHitThrough(!!ignore)
     return true

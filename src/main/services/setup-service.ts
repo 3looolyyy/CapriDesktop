@@ -7,7 +7,7 @@
  * has to be a system package (Python) goes through the package manager and its password prompt.
  */
 
-import { setStorageRoot, storageDir } from './storage-location'
+import { ollamaModelsDir, setStorageRoot, storageDir } from './storage-location'
 import { app, dialog } from 'electron'
 import * as fs from 'fs'
 import * as os from 'os'
@@ -113,6 +113,7 @@ export class SetupService {
     // Fresh install not yet on PATH (per-user or all-users location)
     for (const v of ['Python311', 'Python312', 'Python313', 'Python310']) {
       const places = [
+        path.join(storageDir('Python') || '', 'python.exe'),
         path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', v, 'python.exe'),
         path.join(process.env.ProgramFiles || 'C:\\Program Files', v, 'python.exe')
       ]
@@ -169,13 +170,19 @@ export class SetupService {
   public async changeStorage(root: string | null): Promise<void> {
     setStorageRoot(root)
     if (root) fs.mkdirSync(root, { recursive: true })
-    const models = storageDir('ollama-models')
-    if (isWindows) {
-      await quick('setx', ['OLLAMA_MODELS', models || ''])
-      await quick('taskkill', ['/IM', 'ollama.exe', '/F'])
-      await quick('taskkill', ['/IM', 'ollama app.exe', '/F'])
-    }
+    await this.pointOllamaAtStorage()
     console.log(`[Setup] Requirements will go to ${root || 'the default folders'}`)
+  }
+
+  /** Ollama starts with Windows on its own, so it has to be told too or it fills the old disk */
+  private async pointOllamaAtStorage(): Promise<void> {
+    const models = ollamaModelsDir()
+    if (!isWindows || !models || process.env.OLLAMA_MODELS === models) return
+    fs.mkdirSync(models, { recursive: true })
+    process.env.OLLAMA_MODELS = models
+    await quick('setx', ['OLLAMA_MODELS', models])
+    await quick('taskkill', ['/IM', 'ollama app.exe', '/F'])
+    await quick('taskkill', ['/IM', 'ollama.exe', '/F'])
   }
 
   /** An update can change her persona: an installed model keeps the old one until it's rebuilt */
@@ -267,7 +274,8 @@ export class SetupService {
     log(step, `winget install ${id}`)
     const code = await run(
       'winget',
-      ['install', '-e', '--id', id, '--silent', '--accept-package-agreements', '--accept-source-agreements', ...(id === 'Ollama.Ollama' && storageDir('Ollama') ? ['--location', storageDir('Ollama') as string] : [])],
+      ['install', '-e', '--id', id, '--silent', '--accept-package-agreements', '--accept-source-agreements', ...(id === 'Ollama.Ollama' && storageDir('Ollama') ? ['--location', storageDir('Ollama') as string] : []),
+        ...(id.startsWith('Python.') && storageDir('Python') ? ['--location', storageDir('Python') as string] : [])],
       (l) => log(step, l)
     )
     // winget returns non-zero when the package is already installed; detection decides afterwards
@@ -314,7 +322,7 @@ export class SetupService {
     const exe = path.join(os.tmpdir(), 'capri-python-3.11.9-amd64.exe')
     if (!(await this.download(PYTHON_INSTALLER_URL, exe, 'python', log))) return
     log('python', 'Installing Python 3.11 (per user, no admin needed)...')
-    await run(exe, ['/quiet', 'InstallAllUsers=0', 'PrependPath=1', 'Include_launcher=1', 'Include_test=0'], (l) => log('python', l))
+    await run(exe, ['/quiet', ...(storageDir('Python') ? [`TargetDir=${storageDir('Python')}`] : []), 'InstallAllUsers=0', 'PrependPath=1', 'Include_launcher=1', 'Include_test=0'], (l) => log('python', l))
     fs.rmSync(exe, { force: true })
   }
 
@@ -408,7 +416,8 @@ export class SetupService {
             if (!(await this.hasFfmpeg())) await this.installFfmpegLinux(log)
             return this.hasFfmpeg()
           }
-          await this.winget('Gyan.FFmpeg', 'ffmpeg', log)
+          // winget always puts it on the system disk; the direct download goes to the chosen folder
+          if (!storageDir('tools')) await this.winget('Gyan.FFmpeg', 'ffmpeg', log)
           if (!(await this.hasFfmpeg())) await this.installFfmpegDirect(log)
           return this.hasFfmpeg()
         case 'ollama': {
@@ -418,10 +427,12 @@ export class SetupService {
             if (!ollamaService.findOllamaBinary()) await this.winget('Ollama.Ollama', 'ollama', log)
             if (!ollamaService.findOllamaBinary()) await this.installOllamaDirect(log)
           }
+          await this.pointOllamaAtStorage()
           const st = await ollamaService.ensureRunning()
           return st.running
         }
         case 'model':
+          await this.pointOllamaAtStorage()
           return await this.pullModel(DEFAULT_MODEL, log)
         case 'persona':
           return await this.createPersona(log)
@@ -476,10 +487,13 @@ export class SetupService {
     }
 
     log('python', 'Installing voice packages (edge-tts, faster-whisper). This can take a few minutes...')
-    await run(envPython, ['-m', 'pip', 'install', '--upgrade', 'pip'], (l) => log('python', l))
+    // pip's downloads weigh hundreds of MB: they stay on the chosen disk too
+    const pipCache = storageDir('pip-cache')
+    const pipOptions = pipCache ? { env: { ...process.env, PIP_CACHE_DIR: pipCache } } : {}
+    await run(envPython, ['-m', 'pip', 'install', '--upgrade', 'pip'], (l) => log('python', l), pipOptions)
     // On its own first: pip installs a list all or nothing, and speaking shouldn't depend on hearing
-    await run(envPython, ['-m', 'pip', 'install', 'edge-tts>=6.1'], (l) => log('python', l))
-    const code = await run(envPython, ['-m', 'pip', 'install', '-r', scriptPath('requirements.txt')], (l) => log('python', l))
+    await run(envPython, ['-m', 'pip', 'install', 'edge-tts>=6.1'], (l) => log('python', l), pipOptions)
+    const code = await run(envPython, ['-m', 'pip', 'install', '-r', scriptPath('requirements.txt')], (l) => log('python', l), pipOptions)
     return code === 0 && (await this.voiceEnvReady())
   }
 

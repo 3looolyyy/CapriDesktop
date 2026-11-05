@@ -143,7 +143,7 @@ export class BoredomService {
   }
 
   public canTriggerAutonomous(): boolean {
-    if (!this.isRunning) return false
+    if (!this.isRunning || !consciousnessService.isBoredomEnabled()) return false
 
     // Never interrupt active chat or executing tool tasks
     if (agentManager.getStatus().isRunning) {

@@ -113,6 +113,8 @@ const api = {
     cancelScript: (): void => ipcRenderer.send(IPC_CHANNELS.COMPANION_SCRIPT_CANCEL),
 
     setHitThrough: (ignore: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_HIT_THROUGH, ignore),
+    listDisplays: (): Promise<{ id: number; label: string; width: number; height: number; primary: boolean; current: boolean }[]> => ipcRenderer.invoke(IPC_CHANNELS.DISPLAYS_LIST),
+    moveToDisplay: (id: number): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.DISPLAYS_MOVE, id),
     setClickThrough: (ignore: boolean): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_CLICK_THROUGH, ignore),
 
@@ -357,6 +359,8 @@ const api = {
 
   // Autonomous Boredom
   boredom: {
+    getEnabled: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_GET_ENABLED),
+    setEnabled: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_SET_ENABLED, enabled),
     trigger: (category?: 'spotify' | 'youtube' | 'web_search'): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_TRIGGER, category)
   },

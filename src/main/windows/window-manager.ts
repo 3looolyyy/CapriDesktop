@@ -75,6 +75,9 @@ export class WindowManager {
   public init(): void {
     this.companionWin = createCompanionWindow()
     this.deckWin = createDeckWindow()
+    // If that monitor isn't connected now she stays on the main one, and it's kept for when it's back
+    const savedDisplay = consciousnessService.getCompanionDisplayId()
+    if (savedDisplay !== null) this.moveCompanionToDisplay(savedDisplay, false)
 
     // First launch after installing: ask the user's name, language and set up dependencies
     if (!consciousnessService.isOnboardingDone()) {
@@ -393,6 +396,30 @@ export class WindowManager {
       this.companionWin.setIgnoreMouseEvents(false)
     }
     this.forwardMouseOnLinux(this.companionWin, effective)
+  }
+
+  public listDisplays(): { id: number; label: string; width: number; height: number; primary: boolean; current: boolean }[] {
+    const primary = screen.getPrimaryDisplay().id
+    const current = this.currentDisplay().id
+    return screen.getAllDisplays().map((d) => ({
+      id: d.id,
+      label: d.label || '',
+      width: d.size.width,
+      height: d.size.height,
+      primary: d.id === primary,
+      current: d.id === current
+    }))
+  }
+
+  /** Puts her in the corner of a monitor and remembers it for the next start */
+  public moveCompanionToDisplay(id: number, remember = true): boolean {
+    const display = screen.getAllDisplays().find((d) => d.id === id)
+    if (!display || !this.companionWin || this.companionWin.isDestroyed()) return false
+    const { width, height } = this.companionWin.getBounds()
+    const { workArea } = display
+    this.companionWin.setBounds({ x: workArea.x + workArea.width - width - 20, y: workArea.y + workArea.height - height - 20, width, height }, false)
+    if (remember) consciousnessService.setCompanionDisplayId(id)
+    return true
   }
 
   /** The screen she's on, so moving her to another monitor keeps her there */

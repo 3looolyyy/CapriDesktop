@@ -52,6 +52,8 @@ export interface IElectronAPI {
     setGamingMode: (enabled: boolean, corner?: string) => Promise<boolean>
     getGamingMode: () => Promise<boolean>
     setHitThrough: (ignore: boolean) => Promise<boolean>
+    listDisplays: () => Promise<{ id: number; label: string; width: number; height: number; primary: boolean; current: boolean }[]>
+    moveToDisplay: (id: number) => Promise<boolean>
     setClickThrough: (ignore: boolean) => Promise<boolean>
     onScriptEvent: (
       callback: (
@@ -149,6 +151,8 @@ export interface IElectronAPI {
     getStatus: () => Promise<{ isPlaying: boolean; title: string }>
   }
   boredom: {
+    getEnabled: () => Promise<boolean>
+    setEnabled: (enabled: boolean) => Promise<boolean>
     trigger: (category?: 'spotify' | 'youtube' | 'web_search') => Promise<boolean>
   }
   triggerClip: () => Promise<{ success: boolean; message?: string }>

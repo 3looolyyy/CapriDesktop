@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MicPicker } from './MicPicker'
 import { SoundSettings } from './SoundSettings'
+import { BehaviorSettings } from './BehaviorSettings'
 import { voiceVolume } from '../utils/soundSettings'
 import { useT } from '../utils/useUiLang'
 import {
@@ -284,6 +285,7 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({ isOpen, 
         <div className="p-5 space-y-5 max-h-[78vh] overflow-y-auto">
           <MicPicker />
           <SoundSettings />
+          <BehaviorSettings />
 
           {/* Provider Tabs */}
           <div>

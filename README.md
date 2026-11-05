@@ -403,6 +403,10 @@ Paint drawing isn't available on Linux. Everything that differs from Windows is 
 - **Cyber Engine Tweaks (optional)**: live Cyberpunk 2077 telemetry, together with Capri's mod. See [Installing the Cyberpunk 2077 mod](#installing-the-cyberpunk-2077-mod).
 - **Fish Audio / ElevenLabs (optional)**: API key in `voice_config.local.json` (see `voice_config.example.json`).
 
+### Choosing a disk
+
+If you install her on a disk other than the system's, her requirements go there too, in a `CapriData` folder: Python, the voice environment, Whisper, FFmpeg, Ollama and its models. Requirements you already have stay where they are. You can pick another folder in the first-run setup, under **Where to install**.
+
 ### If she doesn't hear you
 
 Open the voice settings and press **Test** next to the microphone: it records a few seconds and shows what she understood.

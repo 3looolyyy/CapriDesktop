@@ -20,6 +20,10 @@ export interface ConsciousnessData {
   onboardingDone?: boolean
   /** The user asked not to be warned about an incomplete setup */
   setupNoticeDismissed?: boolean
+  /** She opens tabs and music by herself when nobody talks to her */
+  boredomEnabled?: boolean
+  /** The monitor she was put on */
+  companionDisplayId?: number
   /** The arrow keys work as shortcuts while another app has the focus */
   arrowKeysEnabled?: boolean
   /** Hash of the Modelfile the installed persona was built from */
@@ -254,6 +258,24 @@ class ConsciousnessService {
 
   public setUserName(name: string): void {
     this.data.userName = name.trim().slice(0, 40)
+    this.save()
+  }
+
+  public isBoredomEnabled(): boolean {
+    return this.data.boredomEnabled !== false
+  }
+
+  public setBoredomEnabled(enabled: boolean): void {
+    this.data.boredomEnabled = enabled
+    this.save()
+  }
+
+  public getCompanionDisplayId(): number | null {
+    return this.data.companionDisplayId ?? null
+  }
+
+  public setCompanionDisplayId(id: number): void {
+    this.data.companionDisplayId = id
     this.save()
   }
 

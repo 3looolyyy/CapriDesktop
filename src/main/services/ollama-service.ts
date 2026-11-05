@@ -1,4 +1,4 @@
-import { storageDir } from './storage-location'
+import { ollamaModelsDir, storageDir } from './storage-location'
 import { isCloudMode, llmFetch } from './llm-gateway'
 import { toolsDir } from './app-paths'
 import { findOnPath, isLinux, killProcesses } from './platform'
@@ -156,7 +156,7 @@ export class OllamaService {
         return { running: false, models: [] }
       }
 
-      const modelsDir = storageDir('ollama-models') || process.env.OLLAMA_MODELS || undefined
+      const modelsDir = ollamaModelsDir() || process.env.OLLAMA_MODELS || undefined
 
       console.log(`[OllamaService] Starting Ollama daemon from: ${binary}`)
       if (modelsDir) {
