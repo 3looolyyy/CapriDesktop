@@ -1,7 +1,7 @@
 import { ollamaModelsDir, storageDir } from './storage-location'
 import { isCloudMode, llmFetch } from './llm-gateway'
 import { toolsDir } from './app-paths'
-import { findOnPath, isLinux, killProcesses } from './platform'
+import { findOnPath, isLinux, isWindows, killProcesses } from './platform'
 import { spawn } from './hidden-process'
 import fs from 'fs'
 import path from 'path'
@@ -171,9 +171,11 @@ export class OllamaService {
         OLLAMA_CONTEXT_LENGTH: process.env.OLLAMA_CONTEXT_LENGTH || '8192'
       }
 
-      // Launch detached background process
+      // Never detached on Windows: that leaves it with no console at all, even with windowsHide, so
+      // Windows opens a visible one for each runner it starts when a model loads. Not detached it has
+      // a hidden console its runners share, and it closes with her, which stop() already does
       const child = spawn(binary, ['serve'], {
-        detached: true,
+        detached: !isWindows,
         stdio: 'ignore',
         windowsHide: true,
         env
