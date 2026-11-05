@@ -301,8 +301,7 @@ export class CapriLocalAgent extends EventEmitter {
     if (conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
       const english = await voiceService.translateCommand(prompt.trim())
       // Sometimes the model answers instead of translating: an answer is not the command
-      if (english && !english.includes('
-') && english.length <= prompt.length * 2 + 20) {
+      if (english && !/[\r\n]/.test(english) && english.length <= prompt.length * 2 + 20) {
         console.log(`[Capri Agent] Command in ${conversationLang}, understood as: "${english}"`)
         prompt = english
       }
