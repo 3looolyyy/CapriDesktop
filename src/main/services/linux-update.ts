@@ -50,12 +50,15 @@ export function aptFailureReason(stderr: string, fallback: string): string {
 /** Installs the package and waits. Her files change underneath her, so she has to restart afterwards */
 export function installDeb(deb: string): Promise<DebInstallResult> {
   return new Promise((resolve) => {
-    // No timeout: this includes however long the user takes to type the password
-    execFile('pkexec', ['apt-get', 'install', '-y', deb], { maxBuffer: 16 * 1024 * 1024 }, (err, _stdout, stderr) => {
+    // Long enough to go and type the password. Without a limit she'd wait forever where pkexec hangs
+    // instead of failing (no polkit running). Once apt is running as root this can't stop it: the
+    // answer just waits for apt to end
+    execFile('pkexec', ['apt-get', 'install', '-y', deb], { maxBuffer: 16 * 1024 * 1024, timeout: 300000 }, (err, _stdout, stderr) => {
       if (!err) return resolve({ status: 'installed' })
       // pkexec's own exit code when the password dialog is closed or denied
       if ((err as { code?: unknown }).code === 126) return resolve({ status: 'cancelled' })
-      resolve({ status: 'failed', reason: aptFailureReason(String(stderr), err.message) })
+      const fallback = (err as { killed?: boolean }).killed ? 'the password prompt never answered' : err.message
+      resolve({ status: 'failed', reason: aptFailureReason(String(stderr), fallback) })
     })
   })
 }
