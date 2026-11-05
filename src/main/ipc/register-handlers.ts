@@ -202,8 +202,9 @@ export function registerIpcHandlers(): void {
 
   // Preferred Language management
   ipcMain.handle(IPC_CHANNELS.COMPANION_GET_LANGUAGE, () => {
-    return consciousnessService.getPreferredLanguage()
+    return consciousnessService.getUiLanguage()
   })
+  consciousnessService.onSpokenLanguageChanged((lang) => windowManager.broadcast(IPC_CHANNELS.COMPANION_LINE_LANGUAGE, lang))
 
   // Spoken language already configured from a previous session: warm the translator in the background
   if (consciousnessService.getLanguageSettings().speechLang !== 'auto') {
@@ -260,7 +261,7 @@ export function registerIpcHandlers(): void {
     const saved = consciousnessService.setLanguageSettings(next || {})
     // Spoken language differs from the text: load the translation model now, not on the first line
     if (saved.speechLang && saved.speechLang !== 'auto') voiceService.warmTranslator()
-    windowManager.broadcast(IPC_CHANNELS.COMPANION_LANGUAGE_CHANGED, consciousnessService.getPreferredLanguage())
+    windowManager.broadcast(IPC_CHANNELS.COMPANION_LANGUAGE_CHANGED, consciousnessService.getUiLanguage())
     return saved
   })
 
@@ -454,14 +455,21 @@ export function registerIpcHandlers(): void {
   })
 
   // Voice Core (Speech-to-Text and Text-to-Speech)
-  ipcMain.handle(IPC_CHANNELS.VOICE_TRANSCRIBE, async (_event, audioData: ArrayBuffer | Uint8Array) => {
+  ipcMain.handle(IPC_CHANNELS.VOICE_STT_STATE, () => voiceService.getSttState())
+  ipcMain.handle(IPC_CHANNELS.ARROW_KEYS_GET, () => consciousnessService.getArrowKeysEnabled())
+  ipcMain.handle(IPC_CHANNELS.ARROW_KEYS_SET, (_event, enabled: boolean) => {
+    windowManager.setArrowKeysEnabled(!!enabled)
+    return !!enabled
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VOICE_TRANSCRIBE, async (_event, audioData: ArrayBuffer | Uint8Array, partial?: boolean) => {
     try {
       const buffer = Buffer.isBuffer(audioData)
         ? audioData
         : audioData instanceof ArrayBuffer
         ? Buffer.from(audioData)
         : Buffer.from(audioData.buffer, audioData.byteOffset, audioData.byteLength)
-      return await voiceService.transcribe(buffer)
+      return await voiceService.transcribe(buffer, !!partial)
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) }
     }

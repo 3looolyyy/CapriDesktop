@@ -5,7 +5,7 @@
 
 import * as https from 'https'
 import * as fs from 'fs'
-import { exec } from 'child_process'
+import { exec } from '../hidden-process'
 import {
   LcuCredentials,
   LcuActionResult,

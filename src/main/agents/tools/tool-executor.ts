@@ -21,7 +21,7 @@ import { scriptPath } from '../../services/app-paths'
 import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
-import { exec } from 'child_process'
+import { exec } from '../../services/hidden-process'
 import { shell } from 'electron'
 import { clipService } from '../../services/clip-service'
 

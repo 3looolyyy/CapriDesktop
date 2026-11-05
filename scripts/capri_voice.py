@@ -297,7 +297,7 @@ def select_voice(text: str, cfg: dict, lang_override: str = None) -> str:
     # Check if text is distinctly Spanish first before blind English override
     # Never allow a mistaken 'en' override to force an English voice on Spanish text.
     if is_spanish_text(text):
-        if not lang_override or lang_override.lower().strip() in ('es', 'spanish', 'en', 'english', 'auto'):
+        if not lang_override or lang_override.lower().strip() in ('es', 'spanish', 'auto'):
             return cfg.get("voice_es", "es-AR-ElenaNeural")
 
     # Check explicit lang_override if specified (for Latin scripts like ja-romaji, zh-pinyin, es, en, etc.)
@@ -323,6 +323,16 @@ def select_voice(text: str, cfg: dict, lang_override: str = None) -> str:
             return cfg.get("voice_de", "de-DE-KatjaNeural")
         if lo in ('it', 'italian'):
             return cfg.get("voice_it", "it-IT-ElsaNeural")
+        if lo in ('pl', 'polish'):
+            return cfg.get("voice_pl", "pl-PL-ZofiaNeural")
+        if lo in ('nl', 'dutch'):
+            return cfg.get("voice_nl", "nl-NL-ColetteNeural")
+        if lo in ('tr', 'turkish'):
+            return cfg.get("voice_tr", "tr-TR-EmelNeural")
+        if lo in ('sv', 'swedish'):
+            return cfg.get("voice_sv", "sv-SE-SofieNeural")
+        if lo in ('uk', 'ukrainian'):
+            return cfg.get("voice_uk", "uk-UA-PolinaNeural")
 
     # Text content heuristics for Latin scripts
     lower = text.lower()
@@ -663,8 +673,15 @@ def get_whisper_model():
             # "small" understands accented English and mixed ES/EN far better than "base".
             # Override with CAPRI_WHISPER_MODEL (e.g. "medium", "large-v3-turbo") if VRAM allows.
             model_name = os.environ.get("CAPRI_WHISPER_MODEL", "").strip() or "small"
-            _whisper_model = WhisperModel(model_name, device=device, compute_type=compute_type)
-        except Exception:
+            model = WhisperModel(model_name, device=device, compute_type=compute_type)
+            if device == "cuda":
+                # The model loads fine without NVIDIA's libraries and only fails when it first works.
+                # After that failure the same model hangs forever, so it's tried once, right here.
+                import numpy
+                model.detect_language(numpy.zeros(16000, dtype=numpy.float32))
+            _whisper_model = model
+        except Exception as gpu_err:
+            sys.stderr.write(f"[STT] Using the CPU: {gpu_err}\n")
             _whisper_model = cpu_whisper_model()
     return _whisper_model
 
@@ -674,15 +691,33 @@ def cpu_whisper_model():
     model_name = os.environ.get("CAPRI_WHISPER_MODEL", "").strip() or "small"
     return WhisperModel(model_name, device="cpu", compute_type="int8")
 
-CYBERPUNK_INITIAL_PROMPT = (
-    "Cyberpunk 2077, Night City, ripperdoc, nearest ripperdoc, ripperdocs, "
-    "cyberware, implant, matasanos, choom, choomba, netrunner, edgerunner, "
-    "Vik Vector, Arasaka, Militech, NCPD, fixer, drop point, game mode, gamemode, "
-    "clip that, clip this, clipea eso, clipealo, guardá el clip, ShadowPlay, Nvidia, F8, clip, "
-    "Capri. What should we do next? Recommend a gig, next mission, mark Lizzie's Bar, "
-    "Afterlife, quickhack, MaxTac, cyberpsycho, tarot card. League of Legends, gank, jungle, "
-    "can we beat that Garen?"
+# Names Whisper would otherwise mishear. The prompt also pulls it towards its own language, so the
+# Spanish and English phrases only go to those two.
+WHISPER_NAMES = (
+    "Capri, Cyberpunk 2077, Night City, ripperdoc, cyberware, choom, choomba, netrunner, edgerunner, "
+    "Vik Vector, Arasaka, Militech, NCPD, Afterlife, MaxTac, ShadowPlay, Nvidia, F8, League of Legends, Spotify."
 )
+WHISPER_PHRASES = {
+    "en": " Nearest ripperdoc, drop point, game mode, clip that, what should we do next? Recommend a gig, mark Lizzie's Bar, quickhack, cyberpsycho, tarot card, gank, jungle, can we beat that Garen?",
+    "es": " Matasanos, clipea eso, clipealo, guardá el clip, ¿qué hacemos ahora? Recomendame un gig, marcá el bar de Lizzie.",
+}
+
+
+def whisper_prompt(language):
+    return WHISPER_NAMES + WHISPER_PHRASES.get(language, "")
+
+
+def choose_language(probs: dict, hint: str = None) -> str:
+    """
+    The language of the audio. With a clear winner, that one. In a close call accented English
+    tends to come out as Spanish, so it's settled between the language she expects and English.
+    """
+    best = max(probs, key=probs.get)
+    if probs[best] >= 0.7:
+        return best
+    expected = [c for c in (hint, "en") if c and probs.get(c, 0.0) >= 0.1]
+    return max(expected, key=lambda c: probs[c]) if expected else best
+
 
 def clean_cyberpunk_transcription(text: str) -> str:
     if not text:
@@ -698,34 +733,38 @@ def clean_cyberpunk_transcription(text: str) -> str:
     text = re.sub(r'\b(?:clipe[aá]|clipeate)\s+(?:eso|esto)\b', 'clipea eso', text, flags=re.IGNORECASE)
     return text.strip()
 
-def transcribe_audio_internal(input_file: str, language: str = None) -> dict:
+def transcribe_audio_internal(input_file: str, language: str = None, hint: str = None) -> dict:
     temp_wav = input_file + ".16k.wav"
     try:
         # Convert whatever browser MediaRecorder produced (webm/ogg/wav) to 16kHz mono WAV
+        audio_file = temp_wav
         cmd = [FFMPEG, "-y", "-i", input_file, "-ar", "16000", "-ac", "1", temp_wav]
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        try:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        except Exception as ffmpeg_err:
+            # Whisper can read the recording by itself: FFmpeg only makes it a bit faster
+            sys.stderr.write(f"[STT] FFmpeg failed, reading the recording directly: {ffmpeg_err}\n")
+            audio_file = input_file
 
         model = get_whisper_model()
         lang_arg = None
         if language and language != "auto":
-            lang_arg = "es" if language in ("es", "es-ES", "es-AR", "es-MX", "spanish") else ("en" if language in ("en", "en-US", "english") else language)
+            lang_arg = language.split("-")[0].lower()
+            lang_arg = {"spanish": "es", "english": "en"}.get(lang_arg, lang_arg)
 
-        # Auto mode: only choose between Spanish and English. Free detection over 99 languages
-        # sometimes picks Spanish for accented English (and then outputs a Spanish translation).
         if not lang_arg:
             try:
                 from faster_whisper.audio import decode_audio
-                _lang, _prob, all_probs = model.detect_language(decode_audio(temp_wav, sampling_rate=16000))
-                probs = dict(all_probs)
-                lang_arg = "es" if probs.get("es", 0.0) > probs.get("en", 0.0) else "en"
+                _lang, _prob, all_probs = model.detect_language(decode_audio(audio_file, sampling_rate=16000))
+                lang_arg = choose_language(dict(all_probs), hint)
             except Exception:
                 lang_arg = None
 
         def run(m):
             segs, inf = m.transcribe(
-                temp_wav,
+                audio_file,
                 language=lang_arg,
-                initial_prompt=CYBERPUNK_INITIAL_PROMPT,
+                initial_prompt=whisper_prompt(lang_arg),
                 beam_size=5,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=250)
@@ -783,7 +822,7 @@ def run_stt_worker():
                     out["id"] = req_id
                 print(json.dumps(out), flush=True)
                 continue
-            res = transcribe_audio_internal(file_path, lang)
+            res = transcribe_audio_internal(file_path, lang, req.get("hint"))
             if req_id is not None:
                 res["id"] = req_id
             print(json.dumps(res), flush=True)

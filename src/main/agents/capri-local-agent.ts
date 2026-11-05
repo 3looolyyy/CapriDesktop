@@ -1,6 +1,7 @@
 import { scriptPlayer } from '../services/script/script-player'
 import { ensureRequestedLook, requestedLook, splitByLooks, stripLookTags } from '../services/script/look-tags'
 import { isWindows } from '../services/platform'
+import { clearLanguageOf, detectLanguage, type DetectedLang } from '../services/language-detect'
 import { cloudErrorCode, cloudErrorDetail, isCloudMode, llmFetch, type LlmErrorCode } from '../services/llm-gateway'
 import * as os from 'os'
 import { getUserName, personalize, llmBody } from '../services/user-profile'
@@ -8,7 +9,7 @@ import { EventEmitter } from 'events'
 import { localizeLine } from '../../shared/lines'
 import * as fs from 'fs'
 import * as path from 'path'
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, ChildProcess } from '../services/hidden-process'
 import { app } from 'electron'
 import { AgentEventPayload, CompanionEmotionState, IPC_CHANNELS } from '../ipc/channels'
 import { CAPRI_TOOLS, ToolExecutor } from './tools/tool-executor'
@@ -156,6 +157,14 @@ function parseLolCommand(norm: string) {
 const RECOMMENDATION_REPEAT_MS = 15000
 const GAMING_MAX_TOKENS = 120
 
+/** The language rule again, right before what the user just said */
+function withLanguageNote<T extends { role: string; content?: string }>(history: T[], directive: string): T[] {
+  let lastUser = history.length - 1
+  while (lastUser >= 0 && history[lastUser].role !== 'user') lastUser--
+  if (lastUser < 0) return history
+  return [...history.slice(0, lastUser), { role: 'system', content: directive } as T, ...history.slice(lastUser)]
+}
+
 const MAX_OWN_LINES = 5
 const OWN_LINE_MAX_AGE_MS = 30 * 60 * 1000
 
@@ -247,86 +256,8 @@ export class CapriLocalAgent extends EventEmitter {
     }
   }
 
-  public static detectLanguage(text: string): 'es' | 'en' | 'ja' | 'zh' | 'ko' | 'ru' | 'fr' | 'de' | 'pt' | 'it' {
-    const clean = text.toLowerCase().trim()
-    if (/[\u3040-\u309F\u30A0-\u30FF]/.test(clean)) return 'ja'
-    if (/[\u4E00-\u9FFF]/.test(clean)) return 'zh'
-    if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(clean)) return 'ko'
-    if (/[\u0400-\u04FF]/.test(clean)) return 'ru'
-
-    // Spanish-unique characters (never used in Portuguese or English)
-    const hasSpanishUnique = /[ñ¿¡]/.test(clean)
-
-    // Portuguese-unique characters (never used in Spanish)
-    const hasPortugueseUnique = /[ãõêôçà]/.test(clean)
-
-    const enWords = [
-      'the', 'you', 'your', 'what', 'why', 'how', 'where', 'when', 'who', 'is', 'are', 'was', 'were',
-      'can', 'could', 'will', 'would', 'should', 'have', 'has', 'do', 'does', 'did', 'create', 'make',
-      'open', 'close', 'play', 'song', 'file', 'desktop', 'homework', 'scan', 'look', 'see', 'tell',
-      'give', 'with', 'this', 'that', 'from', 'for', 'please', 'about', 'stop', 'dat', 'hack', 'change',
-      'switch', 'language', 'draw', 'sketch', 'paint', 'dog', 'cat', 'house', 'sun', 'stickman', 'heart', 'hello', 'hi', 'hey', 'good', 'morning', 'night', 'bye', 'goodbye', 'ok', 'okay', 'yes', 'yeah', 'yep', 'no', 'nope', 'thanks', 'thank', 'great', 'awesome', 'cool', 'nice', 'sure', 'fine', 'ready', 'picture', 'car', 'tree', 'help', 'check', 'test', 'run', 'work', 'code', 'game', 'play', 'screen', 'music', 'listen', 'hear', 'sound', 'off', 'on', 'up', 'down', 'again', 'now'
-    ]
-    let enScore = 0
-    for (const w of enWords) {
-      if (new RegExp(`\\b${w}\\b`, 'i').test(clean)) enScore++
-    }
-
-    const ptWords = [
-      'você', 'voce', 'voces', 'vocês', 'não', 'nao', 'tudo', 'obrigado', 'obrigada',
-      'estou', 'fazer', 'fazendo', 'fala', 'falar', 'falando', 'beleza', 'valeu',
-      'legal', 'muito', 'muita', 'muitos', 'muitas', 'pra', 'pro', 'pras', 'pros',
-      'meu', 'minha', 'meus', 'minhas', 'seu', 'sua', 'seus', 'suas', 'dele', 'dela',
-      'deles', 'delas', 'bom', 'boa', 'olá', 'ola', 'ajuda', 'ajudar', 'fechar', 'fecha',
-      'arquivo', 'pasta', 'tarefa', 'lição', 'licao', 'computador', 'tela', 'jogo',
-      'jogar', 'então', 'entao', 'também', 'tambem', 'demais', 'agora', 'cadê', 'cade',
-      'comigo', 'pode', 'podem', 'consegue', 'música', 'musica', 'pesquisa', 'pesquisar',
-      'desse', 'dessa', 'disso', 'daqui', 'ali', 'vamos', 'bora', 'deixa', 'olha', 'mim',
-      'está', 'esta', 'gente', 'tá', 'né'
-    ]
-    let ptScore = 0
-    for (const w of ptWords) {
-      if (new RegExp(`\\b${w}\\b`, 'i').test(clean)) ptScore++
-    }
-
-    const esWords = [
-      'hola', 'buenas', 'que', 'como', 'estas', 'esta', 'este', 'esto', 'estos', 'estas',
-      'quien', 'sos', 'eres', 'hacer', 'hace', 'haceme', 'hacé', 'hacéme', 'puedes', 'podes', 'podés',
-      'cambia', 'cambiar', 'cancion', 'canción', 'tema', 'reproduce', 'reproducir', 'pon', 'pone', 'poné',
-      'poneme', 'ponéme', 'busca', 'buscar', 'abrir', 'abre', 'abrí', 'cierra', 'cerrar', 'borra',
-      'borrar', 'pantalla', 'viendo', 'escuchando', 'sabes', 'sabés', 'gusta', 'conoces', 'conocés',
-      'donde', 'dónde', 'cuantas', 'cuántas', 'veces', 'gracias', 'adios', 'adiós', 'chau', 'dale', 'bueno',
-      'sentate', 'sientate', 'arriba', 'abajo', 'izquierda', 'derecha',
-      'tarea', 'archivo', 'escritorio', 'crea', 'creame', 'modifica',
-      'resolvé', 'resuelve', 'mira', 'mirá', 'che', 'posta', 'zarpado', 'copado', 'vos',
-      // Drawing, learning and interaction words
-      'dibuja', 'dibujá', 'dibujar', 'dibujo', 'dibujame', 'dibújame', 'boceto', 'trazo', 'trazos', 'lienzo',
-      'perro', 'gato', 'casa', 'sol', 'arbol', 'árbol', 'monigote', 'auto', 'logo', 'carita', 'corazon', 'corazón',
-      'un', 'una', 'unos', 'unas', 'el', 'la', 'los', 'las', 'de', 'del', 'al', 'en', 'con', 'por', 'para',
-      'aprende', 'aprendé', 'aprender', 'aprendiste', 'mostrame', 'mostrá', 'mostrar', 'te', 'me', 'mi',
-      'tambien', 'también', 'ahora', 'despues', 'después', 'bien', 'mal', 'pero', 'porque', 'por que', 'por qué',
-      'si', 'sí', 'no', 'ya', 'muy', 'mucho', 'mas', 'más', 'quiero', 'pensa', 'pensá', 'listo', 'lista'
-    ]
-    let esScore = 0
-    for (const w of esWords) {
-      if (new RegExp(`\\b${w}\\b`, 'i').test(clean)) esScore++
-    }
-
-    if (hasPortugueseUnique && !hasSpanishUnique) return 'pt'
-    if (hasSpanishUnique && !hasPortugueseUnique) return 'es'
-
-    if (esScore > enScore && esScore > ptScore) return 'es'
-    if (enScore > esScore && enScore > ptScore) return 'en'
-    if (ptScore > esScore && ptScore > enScore) return 'pt'
-
-    if (/\b(bonjour|salut|merci|comment|avec|pourquoi|faire|oui|non)\b/i.test(clean)) return 'fr'
-    if (/\b(hallo|danke|guten|morgen|nicht|bitte|wie|was)\b/i.test(clean)) return 'de'
-    if (/\b(ciao|grazie|bene|come|fare|amico)\b/i.test(clean)) return 'it'
-
-    if (/[áéíóúü]/.test(clean)) return 'es'
-    if (esScore > 0) return 'es'
-    if (enScore > 0) return 'en'
-    return 'en'
+  public static detectLanguage(text: string): DetectedLang {
+    return detectLanguage(text)
   }
 
   public async runPrompt(
@@ -346,26 +277,31 @@ export class CapriLocalAgent extends EventEmitter {
       timestamp: Date.now()
     } as AgentEventPayload)
 
+    const prefLang = consciousnessService.getPreferredLanguage()
+    // What Whisper heard knows more than a guess from the words. A short "ok" tells nothing, so it
+    // stays in the language of the conversation.
+    const spokenPrompt = prompt
+    const heardLang = voiceService.languageOfTranscript(prompt.trim())
+    const detectedLang = heardLang || CapriLocalAgent.detectLanguage(prompt.trim())
+    if (detectedLang !== 'unknown') consciousnessService.setSpokenLanguage(detectedLang)
+    const conversationLang = consciousnessService.getSpokenLanguage()
+
+    // Her commands are recognized in English and Spanish. In any other language the command is
+    // understood through a translation, while the answer stays in the language it was asked in.
+    if (conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
+      const english = await voiceService.translateCommand(prompt.trim())
+      if (english) {
+        console.log(`[Capri Agent] Command in ${conversationLang}, understood as: "${english}"`)
+        prompt = english
+      }
+    }
+
     const trimmed = prompt.trim()
     const originalLower = trimmed.toLowerCase()
-    const prefLang = consciousnessService.getPreferredLanguage()
-    const detectedLang = CapriLocalAgent.detectLanguage(trimmed)
 
-    // Capri speaks English when the user speaks in English, and matches other languages dynamically.
-    // If user prompt is detected in English, she strictly answers in English
-    let activeLang: 'en' | 'es' | 'ja' | 'zh' | 'ko' | 'ru' | 'fr' | 'de' | 'pt' | 'it' = 'en'
     const fixedTextLang = consciousnessService.getLanguageSettings().textLang
-    if (fixedTextLang && fixedTextLang !== 'auto') {
-      activeLang = fixedTextLang as any
-    } else if (detectedLang === 'en') {
-      activeLang = 'en'
-    } else if (detectedLang) {
-      activeLang = detectedLang
-    } else if (prefLang) {
-      activeLang = prefLang as any
-    } else {
-      activeLang = 'en'
-    }
+    const activeLang =
+      fixedTextLang && fixedTextLang !== 'auto' ? fixedTextLang : conversationLang || prefLang || 'en'
 
     this.replyLang = activeLang
     const isSpanish = activeLang === 'es'
@@ -555,7 +491,7 @@ export class CapriLocalAgent extends EventEmitter {
     // e.g. "Hey capri, talk in Spanish", "Capri, talk in English", "habla en español", "habla en inglés"
     const langSwitch = this.parseLanguageChangeIntent(trimmed)
     if (langSwitch) {
-      consciousnessService.setPreferredLanguage(langSwitch.langCode)
+      consciousnessService.setLanguageSettings({ textLang: langSwitch.langCode })
       this.emitAssistant(langSwitch.confirmationPhrase)
       this.finishSession()
       return
@@ -1378,7 +1314,7 @@ export class CapriLocalAgent extends EventEmitter {
     const availableModel = await this.resolveAvailableModel(endpoint, targetModel)
 
     if (availableModel) {
-      await this.runWithLlm(prompt, projectPath, endpoint, { ...config, model: availableModel })
+      await this.runWithLlm(spokenPrompt, projectPath, endpoint, { ...config, model: availableModel })
       return
     }
 
@@ -1401,9 +1337,10 @@ export class CapriLocalAgent extends EventEmitter {
     endpoint: string,
     config: AgentConfig
   ): Promise<void> {
-    const detectedLang = CapriLocalAgent.detectLanguage(prompt)
     // She answers in the language she's spoken to. The language settings are for her fixed lines
-    const effectiveLang = detectedLang
+    const effectiveLang = consciousnessService.getSpokenLanguage() || 'unknown'
+    const detectedLang = effectiveLang
+    let retriedLanguage = false
     const model = config.model || 'qwen2.5-coder'
     const userName = getUserName()
     const desktopPath = path.join(process.env.USERPROFILE || os.homedir(), 'Desktop')
@@ -1444,8 +1381,8 @@ CRITICAL: If {name} asks about what you saw, how she/it looked, what you thought
   * [look:talk]: back to your normal talking self. It's the default, so don't write it at the start.
   * Use them when they add something, at natural pauses, and never more than 3 in a reply. Most short replies need none. If {name} asks you to show one of them, do it.
   * Examples:
-    - "Dejame ver. [look:eye] Mmm, acá hay algo raro. [look:talk] Igual ya te lo arreglo."
-    - "[look:eyes] Mmm, a mí no me engañás. [look:talk] Bueno, contame qué necesitás."
+    - "Let me see. [look:eye] Hmm, something's off here. [look:talk] I'll fix it anyway."
+    - "[look:eyes] Hmm, you can't fool me. [look:talk] Fine, tell me what you need."
     - "Oh, you want that gone? [look:red_eye] Consider it deleted."
   * These only show the format: never copy their words.${askedLook ? `\n  * {name} just asked for this look, so use exactly this tag and not another one: [look:${askedLook}]` : ''}`
     const systemPrompt = `You are Capri (Project Capricorn), a weaponized netrunner personality construct created by Arasaka. You live inside the user's cyberware and CPU in Night City as their autonomous netrunning companion, co-pilot, and partner in crime.
@@ -1538,17 +1475,19 @@ ${lastScanContext}
       ru: 'Russian (Русский)',
       fr: 'French (Français)',
       de: 'German (Deutsch)',
-      pt: 'Portuguese (Português)',
-      it: 'Italian (Italiano)'
+      pt: 'Brazilian Portuguese (português do Brasil)',
+      it: 'Italian (Italiano)',
+      pl: 'Polish (polski)'
     }
-    const targetLangName = langNames[effectiveLang] || 'English'
+    const targetLangName = langNames[effectiveLang]
+    const settingLang = consciousnessService.getPreferredLanguage()
+    const fallbackLangName = langNames[settingLang] || 'English'
 
-    // Detection answers English when it has no clue, so there the model decides from the message itself
-    const langDirective = effectiveLang === 'en'
-      ? `You MUST respond strictly and authentically in the same language as the user's latest message, whatever language that is. If you can't tell, use English.`
-      : effectiveLang === 'pt'
-      ? `The user wrote to you in Portuguese (Português). You MUST respond strictly and authentically in Portuguese (Português)! NEVER confuse Portuguese with Spanish, do NOT speak Spanish or English!`
-      : `The user wrote to you in ${targetLangName}. You MUST respond strictly and authentically in ${targetLangName}! NEVER answer in English or another language if the user wrote in ${targetLangName}.`
+    // With no clear language the model decides from the message itself
+    const notSpanish = effectiveLang === 'es' ? '' : ' Do NOT answer in Spanish unless the message is in Spanish.'
+    const langDirective = targetLangName
+      ? `The user wrote to you in ${targetLangName}. You MUST respond strictly and authentically in ${targetLangName}, even if earlier messages or examples are in another language.${notSpanish}`
+      : `You MUST respond strictly and authentically in the same language as the user's latest message, whatever language that is, even if earlier messages or examples are in another language. If you can't tell, use ${fallbackLangName}.${notSpanish}`
 
     // Maintain multi-turn memory so Capri doesn't repeat phrases or forget context
     if (this.conversationHistory[0]?.role !== 'system') {
@@ -1558,7 +1497,8 @@ ${lastScanContext}
       this.conversationHistory.push({ role: 'system', content: `${systemPrompt}
 LANGUAGE RULE: ${langDirective}` })
       // Exemplars of authentic series dialogue:
-      this.conversationHistory.push({ role: 'user', content: 'Hola Capri! Cómo andás che?' })
+      // A Spanish example here made small models drift into Spanish with everyone
+      if (effectiveLang === 'es') this.conversationHistory.push({ role: 'user', content: 'Hola Capri! Cómo andás che?' })
       this.conversationHistory.push({
         role: 'assistant',
         content: fishVoice
@@ -1611,7 +1551,8 @@ LANGUAGE RULE: ${langDirective}`
 
         const requestPayload: Record<string, unknown> = {
           model,
-          messages: this.conversationHistory,
+          // Right before the message too: small models forget a rule that's far back
+          messages: withLanguageNote(this.conversationHistory, langDirective),
           temperature: 0.7,
           // A running game leaves the model less than half its speed: keep spoken replies short
           max_tokens: windowManager.isGamingModeActive() ? GAMING_MAX_TOKENS : 300,
@@ -1708,6 +1649,14 @@ LANGUAGE RULE: ${langDirective}`
             prompt.trim().length <= 140 &&
             !/(?:code|código|homework|tarea|file|archivo|script|create|crea|solve|resuelve|escribe|write|programa|busca|search)/i.test(prompt)
           const sanitized = ensureRequestedLook(this.sanitizeContent(cleanedContent, isShortPrompt), requestedLook(prompt))
+          // Models slip into another language, Spanish above all: she gets one chance to answer again
+          const replyLang = targetLangName && !retriedLanguage ? clearLanguageOf(stripLookTags(sanitized)) : null
+          if (replyLang && replyLang !== effectiveLang) {
+            retriedLanguage = true
+            console.warn(`[Capri Agent] Answered in ${replyLang} to a message in ${effectiveLang}, asking again`)
+            this.conversationHistory.push({ role: 'system', content: `Your last answer came out in the wrong language. ${langDirective}` })
+            continue
+          }
           if (sanitized) {
             this.conversationHistory.push({
               role: 'assistant',
@@ -3434,6 +3383,8 @@ DIRECTIVES FOR FORMATTING AND REASONING:
 
   private parseLanguageChangeIntent(text: string): { langCode: string; langName: string; confirmationPhrase: string } | null {
     const raw = text.trim()
+    // "Do you speak Spanish?" or "change this text to English" are not requests to change her language
+    if (/[?¿]/.test(raw)) return null
     const lower = raw.toLowerCase()
       .replace(/^(?:hey\s+|hola\s+)?(?:capri|companion)[,:\s]*/i, '')
       .replace(/[,:\s]*(?:por\s+favor|porfa|please|pls)[!.]*$/i, '')
@@ -3447,7 +3398,9 @@ DIRECTIVES FOR FORMATTING AND REASONING:
     // Portuguese patterns: "muda o idioma para portugues", "fala em portugues", "trocar idioma para portugues"
     const mPt = lower.match(/(?:fala|fale|muda|mudar|troca|trocar|altera|alterar|responde|responda)\s+(?:sempre\s+|a\s+partir\s+de\s+agora\s+)?(?:em|o\s+idioma\s+para|o\s+idioma\s+pra|de\s+idioma\s+para|para|pra)?\s*([a-zñáéíóúãõçêôà]+)(?:\s+idioma)?/i)
 
-    const rawCandidate = mEn ? mEn[1] : mEs ? mEs[1] : mPt ? mPt[1] : null
+    const match = mEn || mEs || mPt
+    if (lower.split(/\s+/).length > 8 || (match && match.index !== 0)) return null
+    const rawCandidate = match ? match[1] : null
     let word = rawCandidate ? rawCandidate.toLowerCase().trim() : ''
 
     if (!word) {
@@ -3475,7 +3428,7 @@ DIRECTIVES FOR FORMATTING AND REASONING:
       return {
         langCode: 'ja',
         langName: 'Japanese',
-        confirmationPhrase: '了解、相棒！これからはずっと日本語で話すよ。次はどうする、ヴァレン？'
+        confirmationPhrase: '了解、相棒！これからはずっと日本語で話すよ。次はどうする、{name}？'
       }
     }
     if (/^(?:french|frances|francés|français)$/i.test(word)) {
@@ -3510,14 +3463,14 @@ DIRECTIVES FOR FORMATTING AND REASONING:
       return {
         langCode: 'ru',
         langName: 'Russian',
-        confirmationPhrase: 'Поняла, чумба! С этого момента я всегда буду говорить с тобой по-русски. Что взломаем сегодня, Вален?'
+        confirmationPhrase: 'Поняла, чумба! С этого момента я всегда буду говорить с тобой по-русски. Что взломаем сегодня, {name}?'
       }
     }
     if (/^(?:chinese|chino|mandarin)$/i.test(word)) {
       return {
         langCode: 'zh',
         langName: 'Chinese',
-        confirmationPhrase: '收到，兄弟！从现在起我会一直用中文跟你交流。今天我们黑进哪儿，瓦伦？'
+        confirmationPhrase: '收到，兄弟！从现在起我会一直用中文跟你交流。今天我们黑进哪儿，{name}？'
       }
     }
     if (/^(?:auto|cualquiera|detect|adapt|adaptable)$/i.test(word)) {

@@ -81,6 +81,7 @@ export interface IElectronAPI {
       bootGreeting: string
     }>
     getLanguage: () => Promise<string>
+    onLineLanguage: (callback: (lang: string) => void) => () => void
     setLanguage: (lang: string) => Promise<string>
     speak: (text: string, durationMs?: number) => Promise<boolean>
     onStateChanged: (callback: (state: CompanionEmotionState) => void) => () => void
@@ -127,7 +128,10 @@ export interface IElectronAPI {
     writeFile: (rootDir: string, relPath: string, content: string) => Promise<boolean>
   }
   voice: {
-    transcribe: (audioData: ArrayBuffer | Uint8Array) => Promise<{ success: boolean; text?: string; error?: string }>
+    transcribe: (audioData: ArrayBuffer | Uint8Array, partial?: boolean) => Promise<{ success: boolean; text?: string; error?: string }>
+    sttState: () => Promise<'off' | 'loading' | 'ready' | 'failed'>
+    getArrowKeys: () => Promise<boolean>
+    setArrowKeys: (enabled: boolean) => Promise<boolean>
     synthesize: (text: string, langOverride?: string) => Promise<{ success: boolean; audioDataUrl?: string; error?: string }>
     getConfig: () => Promise<any>
     setConfig: (config: any) => Promise<{ success: boolean; config?: any; error?: string }>

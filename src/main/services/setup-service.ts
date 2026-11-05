@@ -15,6 +15,8 @@ import { spawn, execFile } from 'child_process'
 import { localFfmpegPath, pythonEnvDir, scriptPath, toolsDir, venvPython } from './app-paths'
 import { findOnPath, isWindows, linuxInstallCommand, linuxPackageManager } from './platform'
 import { ollamaService } from './ollama-service'
+import { voiceService } from './voice-service'
+import { createHash } from 'crypto'
 import { consciousnessService } from './consciousness-service'
 import { isCloudMode } from './llm-gateway'
 import { windowManager } from '../windows/window-manager'
@@ -135,6 +137,7 @@ export class SetupService {
       // No password prompts out of nowhere: on Linux a missing system package waits for the setup
       const ok = await this.installVoiceEnv((_step, line) => console.log(`[Setup] ${line}`), false)
       console.log(ok ? '[Setup] Voice environment ready.' : '[Setup] The voice environment is still incomplete.')
+      if (ok) voiceService.restartWorker()
     } finally {
       this.busy = false
     }
@@ -155,6 +158,25 @@ export class SetupService {
       else if (s.ollama.running && s.ollama.models.length === 0) missing.push('model')
     }
     return missing
+  }
+
+  /** An update can change her persona: an installed model keeps the old one until it's rebuilt */
+  public async refreshPersona(): Promise<void> {
+    if (!app.isPackaged || this.busy || isCloudMode()) return
+    const version = createHash('sha256').update(fs.readFileSync(scriptPath('Modelfile.capri'))).digest('hex')
+    if (consciousnessService.getPersonaVersion() === version) return
+    const tags = await ollamaService.queryTags()
+    // With Ollama closed there's no way to know: it waits for the next start
+    if (!tags.running) return
+    if (tags.models.some((m) => m.toLowerCase().startsWith('capri'))) {
+      this.busy = true
+      try {
+        if (!(await this.createPersona((_step, line) => console.log(`[Setup] ${line}`)))) return
+      } finally {
+        this.busy = false
+      }
+    }
+    consciousnessService.setPersonaVersion(version)
   }
 
   /** Offers the setup when it was left incomplete. Never in the middle of a game. */
@@ -356,8 +378,12 @@ export class SetupService {
     this.busy = true
     try {
       switch (step) {
-        case 'python':
-          return await this.installVoiceEnv(log)
+        case 'python': {
+          const ok = await this.installVoiceEnv(log)
+          // It may have started before Whisper was here, and it wouldn't notice on its own
+          if (ok) voiceService.restartWorker()
+          return ok
+        }
         case 'ffmpeg':
           if (!isWindows) {
             if (!(await this.hasFfmpeg())) await this.installFfmpegLinux(log)

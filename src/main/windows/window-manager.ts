@@ -131,27 +131,8 @@ export class WindowManager {
       console.warn('[WindowManager] Failed to register global shortcut Ctrl+Alt+V:', err)
     }
 
-    // Down Arrow (Flecha hacia abajo) - dedicated push/toggle hotkey to speak with Capri
-    try {
-      globalShortcut.register('Down', () => {
-        this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_RECORDING)
-      })
-      console.log('[WindowManager] Registered global shortcut "Down" (Flecha abajo) for voice command')
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Down:', err)
-    }
-
     // Escape cancels a push-to-talk recording. Registered only while recording
     // (see setVoiceRecordingActive) so Esc keeps working normally in every other app.
-
-    // Right Arrow (Flecha derecha) - toggle Always Listening mode
-    try {
-      globalShortcut.register('Right', () => {
-        this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING)
-      })
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Right:', err)
-    }
 
     // Linux can't report Ctrl while Capri is click-through, so this replaces Ctrl + hover in Gaming Mode
     if (isLinux) {
@@ -165,14 +146,11 @@ export class WindowManager {
       }
     }
 
-    // Left Arrow (Flecha izquierda) - open/close Capri's chat (same as Ctrl + Click on her)
-    try {
-      globalShortcut.register('Left', () => {
-        this.broadcast(IPC_CHANNELS.COMPANION_TOGGLE_CHAT)
-      })
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Left:', err)
-    }
+    // The arrows are global only while another app has the focus: in her own windows they belong to
+    // the text fields, and those windows handle them on their own
+    this.syncArrowKeys()
+    app.on('browser-window-focus', () => this.syncArrowKeys())
+    app.on('browser-window-blur', () => setTimeout(() => this.syncArrowKeys(), 50))
 
     // Listen for language changes and broadcast to all windows
     consciousnessService.onLanguageChanged((lang) => {
@@ -194,6 +172,32 @@ export class WindowManager {
     this.onboardingWin.on('closed', () => {
       this.onboardingWin = null
     })
+  }
+
+  private arrowKeysRegistered = false
+
+  private syncArrowKeys(): void {
+    const wanted = consciousnessService.getArrowKeysEnabled() && !BrowserWindow.getFocusedWindow()
+    if (wanted === this.arrowKeysRegistered) return
+    this.arrowKeysRegistered = wanted
+    const keys: [string, string][] = [
+      ['Down', IPC_CHANNELS.VOICE_TOGGLE_RECORDING],
+      ['Right', IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING],
+      ['Left', IPC_CHANNELS.COMPANION_TOGGLE_CHAT]
+    ]
+    for (const [key, channel] of keys) {
+      try {
+        if (wanted) globalShortcut.register(key, () => this.broadcast(channel))
+        else globalShortcut.unregister(key)
+      } catch (err) {
+        console.warn(`[WindowManager] Could not change the shortcut ${key}:`, err)
+      }
+    }
+  }
+
+  public setArrowKeysEnabled(enabled: boolean): void {
+    consciousnessService.setArrowKeysEnabled(enabled)
+    this.syncArrowKeys()
   }
 
   public finishOnboarding(): void {

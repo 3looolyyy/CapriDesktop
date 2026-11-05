@@ -1,7 +1,7 @@
 import { isCloudMode, llmFetch } from './llm-gateway'
 import { toolsDir } from './app-paths'
 import { findOnPath, isLinux, killProcesses } from './platform'
-import { spawn } from 'child_process'
+import { spawn } from './hidden-process'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'

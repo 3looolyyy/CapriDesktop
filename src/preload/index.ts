@@ -160,6 +160,11 @@ const api = {
     }> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_CONSCIOUSNESS),
 
     getLanguage: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_LANGUAGE),
+    onLineLanguage: (callback: (lang: string) => void): (() => void) => {
+      const sub = (_e: IpcRendererEvent, lang: string): void => callback(lang)
+      ipcRenderer.on(IPC_CHANNELS.COMPANION_LINE_LANGUAGE, sub)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_LINE_LANGUAGE, sub)
+    },
 
     setLanguage: (lang: string): Promise<string> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_LANGUAGE, lang),
@@ -295,8 +300,11 @@ const api = {
 
   // Voice Core (Speech-to-Text & Text-to-Speech)
   voice: {
-    transcribe: (audioData: ArrayBuffer | Uint8Array): Promise<{ success: boolean; text?: string; error?: string }> =>
-      ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData),
+    transcribe: (audioData: ArrayBuffer | Uint8Array, partial?: boolean): Promise<{ success: boolean; text?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData, partial),
+    sttState: (): Promise<'off' | 'loading' | 'ready' | 'failed'> => ipcRenderer.invoke(IPC_CHANNELS.VOICE_STT_STATE),
+    getArrowKeys: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ARROW_KEYS_GET),
+    setArrowKeys: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ARROW_KEYS_SET, enabled),
 
     synthesize: (text: string, langOverride?: string): Promise<{ success: boolean; audioDataUrl?: string; error?: string }> =>
       ipcRenderer.invoke(IPC_CHANNELS.VOICE_SYNTHESIZE, text, langOverride),

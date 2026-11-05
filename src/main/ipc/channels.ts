@@ -29,6 +29,7 @@ export const IPC_CHANNELS = {
   COMPANION_MOVE_BY: 'companion:moveBy',
   COMPANION_GET_CONSCIOUSNESS: 'companion:getConsciousness',
   COMPANION_GET_LANGUAGE: 'companion:getLanguage',
+  COMPANION_LINE_LANGUAGE: 'companion:lineLanguage',
   COMPANION_SET_LANGUAGE: 'companion:setLanguage',
   COMPANION_LANGUAGE_CHANGED: 'companion:languageChanged',
   COMPANION_GET_LANGUAGE_SETTINGS: 'companion:getLanguageSettings',
@@ -87,6 +88,9 @@ export const IPC_CHANNELS = {
 
   // Voice Core (Speech-to-Text and Text-to-Speech)
   VOICE_TRANSCRIBE: 'voice:transcribe',
+  VOICE_STT_STATE: 'voice:sttState',
+  ARROW_KEYS_GET: 'shortcuts:getArrowKeys',
+  ARROW_KEYS_SET: 'shortcuts:setArrowKeys',
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TOGGLE_RECORDING: 'voice:toggle-recording',
   /** Renderer -> main: push-to-talk recording started/stopped (enables the global Esc to cancel) */
