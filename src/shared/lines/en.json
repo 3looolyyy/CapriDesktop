@@ -821,5 +821,8 @@
  "[excited] Version {0} is out! [curious] I can't install it by myself on this system, so I'm opening the page for you to grab the package.",
  "[happy] Got it! [curious] Your system will ask for your password to install it. [playful] Type it in and I'll be right back.",
  "[curious] I can't install it without the password, so I'm staying on {0}. Ask me again whenever you want.",
- "[worried] I couldn't install it: {0}. I'm opening the page so you can do it by hand."
+ "[worried] I couldn't install it: {0}. I'm opening the page so you can do it by hand.",
+ "[curious] I can't find {0} anywhere, choomba. Show me where it is and I'll remember it.",
+ "Where is {0}?",
+ "I couldn't open {0}, choomba. Ask me again whenever you want and show me where it is."
 ]

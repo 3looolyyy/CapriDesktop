@@ -212,7 +212,7 @@ Capri understands commands in both English and Spanish.
 | `show me your red eye` / `mostrame tu ojo rojo` | Changes her look. Also `your eye` / `tu ojo` and `your big eyes` / `tus ojos`. |
 | `why did you pick that?` / `¿por qué elegiste eso?` | She answers about what she just said or did on her own. |
 | `what's new?` / `¿qué hay de nuevo?` | Reads the notes of this version. |
-| `update yourself` / `actualizate` | Looks for a new version. |
+| `update yourself` / `actualizate` | Looks for a new version and installs it. A `.deb` asks for your password. |
 | `clip that` / `clipeá eso` | Saves the last moments of your game with ShadowPlay (`F8`). |
 | `are you bored?` / `¿estás aburrida?` | She finds something to do: music, a video or a search. |
 
@@ -257,6 +257,7 @@ The drawing, League of Legends and Cyberpunk 2077 commands are in [section 8](#8
 | `open league of legends` / `abrí el lol` | Starts the Riot client / League of Legends. |
 | `open cyberpunk` | Launches Cyberpunk 2077 through Steam or GOG. |
 | `open steam` / `open discord` / `open obs` | Launches Steam, Discord or OBS Studio. |
+| `open blender` / `abrí la epic games store` | Opens any installed app. If she can't find it, she asks you where it is and remembers it. |
 | `close league` / `close chrome` / `cerrá discord` | Closes the process. |
 
 ### Desktop interaction

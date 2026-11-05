@@ -1,2 +1,2 @@
 [excited] Nuovo aggiornamento, {name}!
-[happy] Su Linux prima ti mandavo a una pagina per scaricare il pacchetto. [giggles] Ora lo scarico io, ti chiedo la password se serve e torno da sola.
+[happy] Ora apro qualsiasi app mi chiedi, e se non la trovo mi mostri dov'è una volta e me lo ricordo. [giggles] E su Linux mi aggiorno da sola: scarico il pacchetto, ti chiedo la password se serve e torno.

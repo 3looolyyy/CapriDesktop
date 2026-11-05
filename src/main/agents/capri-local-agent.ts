@@ -29,6 +29,7 @@ import { CyberpunkGig } from '../services/game/adapters/cyberpunk/gigs'
 import { lolCommentator } from '../services/game/adapters/lol/lol-commentator'
 import { CodingAgent, isCodingRequest } from './coding-agent'
 import { updateService } from '../services/update-service'
+import { cleanAppRequest } from '../services/app-finder'
 
 /**
  * Deleting is only allowed when the user asked to delete and named that file or folder
@@ -155,6 +156,11 @@ function parseLolCommand(norm: string) {
 }
 
 const RECOMMENDATION_REPEAT_MS = 15000
+// "Abrí", "abrime" and the other languages' verbs too. Not "ejecutá" or "run": those also mean commands
+const APP_LAUNCH_VERBS = 'abre|abrir|abr[ií]|abr[ií]me|abra|open|launch|inicia|inici[aá]|iniciar|lanz[aá]|arranc[aá]|entra\\s+a|jugar|juega|jug[aá]|play|ouvre|lance|öffne|starte|apri|avvia|открой|запусти'
+const APP_LAUNCH_VERB_START = new RegExp(`^(?:${APP_LAUNCH_VERBS})\\s+`, 'i')
+const APP_LAUNCH_VERB_ANYWHERE = new RegExp(`(?:^|[\\s,])(?:${APP_LAUNCH_VERBS})\\s+(?:a\\s+|al\\s+|el\\s+|la\\s+|the\\s+)?(.+)`, 'i')
+
 const GAMING_MAX_TOKENS = 120
 
 /** The language rule again, right before what the user just said */
@@ -1225,14 +1231,14 @@ export class CapriLocalAgent extends EventEmitter {
     }
 
     // Direct App Launch or Song Playback Interceptor
-    const normAppLaunch = trimmed.replace(/^(?:can\s+you(?:\s+please)?|could\s+you(?:\s+please)?|would\s+you(?:\s+please)?|please|por\s+favor|podes|puedes|quiero\s+que)\s+/i, '').trim()
+    const normAppLaunch = trimmed.replace(/^(?:(?:hey\s+|oye\s+|che\s+)?capri[,\s]+|che[,\s]+|dale[,\s]+)?(?:can\s+you(?:\s+please)?|could\s+you(?:\s+please)?|would\s+you(?:\s+please)?|please|por\s+favor|pod[eé]s|puedes|quiero\s+que)?\s*/i, '').trim()
     const isMediaPlayback =
       /(?:reproduce|reproduzca|reproducir|play|pone|pon|escuchar|listen|toca|tocar)\s+/i.test(trimmed) ||
       /(?:spotify|youtube|musica|música|cancion|canción|track|song).*(?:reproduce|reproduzca|play|pone|pon|busca)/i.test(trimmed)
 
     const isAppLaunch =
       isMediaPlayback ||
-      /^(?:abre|abrir|open|launch|inicia|iniciar|entra\s+a|jugar|juega|play)\s+/i.test(normAppLaunch) ||
+      APP_LAUNCH_VERB_START.test(normAppLaunch) ||
       /(?:abre|abrir|open|launch|inicia|iniciar|jugar|juega)\s+(?:chrome|steam|spotify|discord|youtube|calc|calculadora|notepad|bloc|obs|lol|league|valorant|cyberpunk|palworld|roblox|minecraft|fortnite|juego|game|browser|navegador)/i.test(prompt) ||
       /^(?:youtube|steam|spotify|discord|chrome|calc|calculadora|notepad|obs|lol|valorant|cyberpunk|palworld|roblox|browser|navegador)$/i.test(normAppLaunch)
 
@@ -2044,7 +2050,7 @@ LANGUAGE RULE: ${langDirective}`
     }
 
     // Read file
-    const readMatch = p.match(/(?:read|cat|open|view|show|lee|muestra|ver|abre)\s+(?:the\s+file\s+|file\s+|el\s+archivo\s+)?([^\s]+\.[a-zA-Z0-9]+)/i)
+    const readMatch = p.match(/(?:read|cat|open|view|show|lee|muestra|ver|abre|abr[ií])\s+(?:the\s+file\s+|file\s+|el\s+archivo\s+)?([^\s]+\.[a-zA-Z0-9]+)/i)
     if (readMatch) {
       const filePath = readMatch[1].trim()
       await this.runSingleTool(
@@ -2117,11 +2123,11 @@ LANGUAGE RULE: ${langDirective}`
     }
 
     // Launch Application, Game, or Website (e.g. "abre el lol", "abre cyberpunk", "abre chrome y entra a youtube", "abre steam", "abre obs", "abre calc")
-    const launchMatch = p.match(/(?:abre|abrir|open|launch|inicia|iniciar|entra\s+a|jugar|juega|play)\s+(?:a\s+|al\s+|el\s+|la\s+|the\s+)?(.+)/i)
+    const launchMatch = p.match(APP_LAUNCH_VERB_ANYWHERE)
     const isDirectKeyword = /^(?:youtube|steam|spotify|discord|chrome|calc|calculadora|notepad|obs|lol|valorant|cyberpunk|palworld|roblox|minecraft|fortnite)$/i.test(p)
 
     if (launchMatch || isDirectKeyword) {
-      const targetStr = launchMatch ? launchMatch[1].trim() : p
+      const targetStr = launchMatch ? cleanAppRequest(launchMatch[1]) : p
       let appOrUrl = targetStr
       let url = ''
 
@@ -2174,7 +2180,7 @@ LANGUAGE RULE: ${langDirective}`
       } else if (lowerTarget.includes('youtube')) {
         appOrUrl = 'chrome'
         url = 'https://www.youtube.com'
-      } else if (lowerTarget.includes('obs')) {
+      } else if (/\bobs\b/.test(lowerTarget)) {
         appOrUrl = 'obs'
       } else if (lowerTarget.includes('steam')) {
         appOrUrl = 'steam'
@@ -2184,11 +2190,11 @@ LANGUAGE RULE: ${langDirective}`
         appOrUrl = 'discord'
       } else if (lowerTarget.includes('chrome')) {
         appOrUrl = 'chrome'
-      } else if (lowerTarget.includes('calc') || lowerTarget.includes('calculadora')) {
+      } else if (/\bcalc/.test(lowerTarget)) {
         appOrUrl = 'calc'
-      } else if (lowerTarget.includes('notepad') || lowerTarget.includes('bloc')) {
+      } else if (/\b(?:notepad|bloc)\b/.test(lowerTarget)) {
         appOrUrl = 'notepad'
-      } else if (lowerTarget.includes('lol') || lowerTarget.includes('league')) {
+      } else if (/\b(?:lol|league)\b/.test(lowerTarget)) {
         appOrUrl = 'lol'
       } else if (lowerTarget.includes('cyberpunk')) {
         appOrUrl = 'cyberpunk'
@@ -2204,17 +2210,25 @@ LANGUAGE RULE: ${langDirective}`
         appOrUrl = 'fortnite'
       }
 
-      await this.runSingleTool(
+      const launched = await this.runSingleTool(
         'open_application',
         { appOrUrl, url },
         projectPath,
         `Breaching target: Launching "${appOrUrl}"... Don't make me wait!`
       )
-      this.emitAssistant(
-        isSpanish
-          ? `¡Entrando a ${appOrUrl} para vos! ¡A divertirse y causar un poco de caos, choomba!`
-          : `Blasted into ${appOrUrl} for you! Have fun and let's cause some chaos, choomba!`
-      )
+      if (launched.success) {
+        this.emitAssistant(
+          isSpanish
+            ? `¡Entrando a ${appOrUrl} para vos! ¡A divertirse y causar un poco de caos, choomba!`
+            : `Blasted into ${appOrUrl} for you! Have fun and let's cause some chaos, choomba!`
+        )
+      } else {
+        this.emitAssistant(
+          isSpanish
+            ? `No pude abrir ${appOrUrl}, choomba. Pedímelo de nuevo cuando quieras y mostrame dónde está.`
+            : `I couldn't open ${appOrUrl}, choomba. Ask me again whenever you want and show me where it is.`
+        )
+      }
       this.finishSession()
       return
     }

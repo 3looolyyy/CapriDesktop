@@ -70,13 +70,13 @@ export function readPatchScript(version: string, lang: Lang): string | null {
   return null
 }
 
-function speechLang(): Lang {
+export function speechLang(): Lang {
   const s = consciousnessService.getLanguageSettings()
   return s.speechLang && s.speechLang !== 'auto' ? s.speechLang : consciousnessService.getPreferredLanguage()
 }
 
 /** Speaks a line through the companion (bubble + voice) */
-function speak(text: string): void {
+export function speak(text: string): void {
   const durationMs = Math.min(60000, Math.max(5000, text.length * 75))
   windowManager.broadcast(IPC_CHANNELS.COMPANION_SPEECH_CHANGED, { text: personalize(localizeLine(text, speechLang())), durationMs, speakVoice: true })
 }

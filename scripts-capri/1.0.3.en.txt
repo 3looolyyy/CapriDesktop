@@ -1,2 +1,2 @@
 [excited] New update, {name}!
-[happy] On Linux I used to send you to a page to download the package. [giggles] Now I download it myself, ask for your password if it's needed and come back by myself.
+[happy] Now I open any app you ask for, and if I can't find it you show me where it is once and I remember it. [giggles] And on Linux I update by myself: I download the package, ask for your password if it's needed and come back.

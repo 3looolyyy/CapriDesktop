@@ -30,6 +30,8 @@ export interface ConsciousnessData {
   personaVersion?: string
   /** App version of the previous run, to read the patch scripts after an update */
   lastRunVersion?: string
+  /** Apps she couldn't find and the user showed her, by the name they were asked for */
+  appPaths?: Record<string, string>
   /** League champions the user asked Capri to pick, counted per role (top, jungle, middle, bottom, utility, any) */
   lolChampionRequests?: Record<string, Record<string, number>>
   /** UI language settings: 'auto' or an ISO code (es, en, pt, fr, de, it, ja, ko, zh, ru) */
@@ -331,6 +333,21 @@ class ConsciousnessService {
     return Object.entries(bucket)
       .map(([champion, count]) => ({ champion, count }))
       .sort((a, b) => b.count - a.count)
+  }
+
+  public getAppPath(key: string): string | null {
+    return this.data.appPaths?.[key] || null
+  }
+
+  public setAppPath(key: string, file: string): void {
+    this.data.appPaths = { ...this.data.appPaths, [key]: file }
+    this.save()
+  }
+
+  public forgetAppPath(key: string): void {
+    if (!this.data.appPaths?.[key]) return
+    delete this.data.appPaths[key]
+    this.save()
   }
 
   public getLastRunVersion(): string | null {
