@@ -30,6 +30,7 @@ import { lolCommentator } from '../services/game/adapters/lol/lol-commentator'
 import { CodingAgent, isCodingRequest } from './coding-agent'
 import { updateService } from '../services/update-service'
 import { cleanAppRequest } from '../services/app-finder'
+import { commandInEnglish } from './command-translations'
 import { appRequestInEnglish, isHoldStillRequest, isMoveAgainRequest, isUpdateInOtherLanguage, isVersionRequest, isWhatsNewInOtherLanguage } from './spoken-commands'
 
 /**
@@ -105,7 +106,7 @@ function parseLolCommand(norm: string) {
 
   // Cancel / Stop queue / Cancel plan
   const wantsCancel =
-    /(?:cancel(?:a|ar)?|deten(?:er)?|stop)\s+(?:la\s+)?(?:b[uú]squeda|matchmaking|queue|cola|plan(?:\s+de\s+lol)?)|sal(?:ir|í)?\s+de\s+(?:la\s+)?cola|leave\s+queue/i.test(norm)
+    /(?:cancel(?:a|ar)?|deten(?:er)?|stop)\s+(?:la\s+|the\s+)?(?:b[uú]squeda|matchmaking|queue|cola|plan(?:\s+de\s+lol)?)|sal(?:ir|í)?\s+de\s+(?:la\s+)?cola|leave\s+queue/i.test(norm)
 
   // Search queue
   const wantsSearch =
@@ -299,13 +300,18 @@ export class CapriLocalAgent extends EventEmitter {
     // stays in the language of the conversation.
     const spokenPrompt = prompt
     const heardLang = voiceService.languageOfTranscript(prompt.trim())
-    const detectedLang = heardLang || CapriLocalAgent.detectLanguage(prompt.trim())
+    // A fixed command needs no model and no guessing: the phrase itself says which language it's in
+    const fixedCommand = commandInEnglish(prompt)
+    const detectedLang = heardLang || fixedCommand?.lang || CapriLocalAgent.detectLanguage(prompt.trim())
     if (detectedLang !== 'unknown') consciousnessService.setSpokenLanguage(detectedLang)
     const conversationLang = consciousnessService.getSpokenLanguage()
 
     // Her commands are recognized in English and Spanish. In any other language the command is
     // understood through a translation, while the answer stays in the language it was asked in.
-    if (conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
+    if (fixedCommand) {
+      console.log(`[Capri Agent] Command in ${fixedCommand.lang}, read as: "${fixedCommand.text}"`)
+      prompt = fixedCommand.text
+    } else if (conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
       const english = await voiceService.translateCommand(prompt.trim())
       // Sometimes the model answers instead of translating: an answer is not the command
       if (english && !/[\r\n]/.test(english) && english.length <= prompt.length * 2 + 20) {

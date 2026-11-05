@@ -6,7 +6,7 @@
 function plain(text: string): string {
   return text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/([a-z])[̀-ͯ]+/gi, '$1') // only Latin accents: the й in Russian is a letter of its own
     .normalize('NFC')
     .toLowerCase()
     .replace(/[?!.,;:¡¿。！？、，「」"'’…-]/g, ' ')
