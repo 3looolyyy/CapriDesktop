@@ -212,6 +212,7 @@ Capri understands commands in both English and Spanish.
 | `show me your red eye` / `mostrame tu ojo rojo` | Changes her look. Also `your eye` / `tu ojo` and `your big eyes` / `tus ojos`. |
 | `why did you pick that?` / `¿por qué elegiste eso?` | She answers about what she just said or did on her own. |
 | `what's new?` / `¿qué hay de nuevo?` | Reads the notes of this version. |
+| `what version are you on?` / `¿en qué versión estás?` | Tells you her version. |
 | `update yourself` / `actualizate` | Looks for a new version and installs it. A `.deb` asks for your password. |
 | `clip that` / `clipeá eso` | Saves the last moments of your game with ShadowPlay (`F8`). |
 | `are you bored?` / `¿estás aburrida?` | She finds something to do: music, a video or a search. |
@@ -265,6 +266,8 @@ The drawing, League of Legends and Cyberpunk 2077 commands are in [section 8](#8
 | :--- | :--- |
 | `sit on tabs` / `sentate en la pestaña` | Capri perches on your browser tabs. |
 | `sit on the desktop` / `sentate en el escritorio` | She goes back to the desktop. |
+| `stay still` / `quedate quieta` | She stays where she is until you move her. |
+| `you can move` / `podés moverte` | She goes back to wandering around. |
 | `what are you doing?` | She tells you how she feels and what she's up to. |
 
 ---

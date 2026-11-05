@@ -30,6 +30,7 @@ import { lolCommentator } from '../services/game/adapters/lol/lol-commentator'
 import { CodingAgent, isCodingRequest } from './coding-agent'
 import { updateService } from '../services/update-service'
 import { cleanAppRequest } from '../services/app-finder'
+import { appRequestInEnglish, isHoldStillRequest, isMoveAgainRequest, isUpdateInOtherLanguage, isVersionRequest, isWhatsNewInOtherLanguage } from './spoken-commands'
 
 /**
  * Deleting is only allowed when the user asked to delete and named that file or folder
@@ -413,8 +414,33 @@ export class CapriLocalAgent extends EventEmitter {
       }
     }
 
+    // "Quedate quieta": she stays where she is until the user moves her
+    if (isHoldStillRequest(trimmed)) {
+      roamingManager.holdStill()
+      this.emitAssistant(
+        isSpanish
+          ? '[happy] Listo, me quedo acá. [playful] No me muevo hasta que me muevas vos.'
+          : "[happy] Okay, I'm staying right here. [playful] I won't move until you move me."
+      )
+      this.finishSession()
+      return
+    }
+
+    if (isMoveAgainRequest(trimmed)) {
+      roamingManager.releaseHold()
+      this.emitAssistant(isSpanish ? '[excited] ¡Libre otra vez! Vuelvo a dar vueltas, choomba.' : '[excited] Free again! Back to wandering around, choomba.')
+      this.finishSession()
+      return
+    }
+
+    if (isVersionRequest(trimmed)) {
+      this.emitAssistant(updateService.versionLine(activeLang))
+      this.finishSession()
+      return
+    }
+
     // Self-update: "Capri, actualizate" -> latest GitHub Release, silent install, restart
-    if (isUpdateRequest(norm)) {
+    if (isUpdateRequest(norm) || isUpdateInOtherLanguage(trimmed)) {
       this.emitAssistant(
         isSpanish
           ? '[excited] ¡Dale! Me fijo si salió una versión nueva...'
@@ -426,7 +452,7 @@ export class CapriLocalAgent extends EventEmitter {
     }
 
     // "¿Qué hay de nuevo?" -> the patch script of the running version (scripts-capri/)
-    if (isWhatsNewRequest(norm)) {
+    if (isWhatsNewRequest(norm) || isWhatsNewInOtherLanguage(trimmed)) {
       this.emitAssistant(updateService.whatsNew(activeLang))
       this.finishSession()
       return
@@ -1227,6 +1253,13 @@ export class CapriLocalAgent extends EventEmitter {
           ]
       this.emitAssistant(searchLines[Math.floor(Math.random() * searchLines.length)])
       this.finishSession()
+      return
+    }
+
+    // Opening or closing an app in a language or word order the patterns below can't read
+    const appRequest = appRequestInEnglish(trimmed)
+    if (appRequest) {
+      await this.runSmartAutonomous(appRequest, projectPath)
       return
     }
 
