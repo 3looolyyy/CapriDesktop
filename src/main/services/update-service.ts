@@ -15,7 +15,7 @@ import { spawn } from './hidden-process'
 import { app, shell } from 'electron'
 import { resourceRoot } from './app-paths'
 import { isLinux } from './platform'
-import { windowsUpdateScript } from './windows-update'
+import { startIndependently, windowsUpdateScript } from './windows-update'
 import { localizeLine } from '../../shared/lines'
 import { consciousnessService } from './consciousness-service'
 import { personalize } from './user-profile'
@@ -91,10 +91,11 @@ class UpdateService {
   public async announcePatchNotesIfUpdated(): Promise<void> {
     const current = app.getVersion()
     const last = consciousnessService.getLastRunVersion()
-    consciousnessService.setLastRunVersion(current)
     // Fresh install (or the setup wizard is still pending): nothing to compare against
-    if (!last || !consciousnessService.isOnboardingDone()) return
-    if (compareVersions(current, last) <= 0) return
+    if (!last || !consciousnessService.isOnboardingDone() || compareVersions(current, last) <= 0) {
+      consciousnessService.setLastRunVersion(current)
+      return
+    }
 
     const lang = speechLang()
     const skipped = scriptVersions().filter((v) => compareVersions(v, last) > 0 && compareVersions(v, current) <= 0)
@@ -105,6 +106,8 @@ class UpdateService {
       speak(script)
       await wait(speakTime(script))
     }
+    // Only now: closing her in the middle shouldn't lose the notes for good
+    consciousnessService.setLastRunVersion(current)
   }
 
   /** "¿Qué hay de nuevo?": the script of the version that's running */
@@ -216,12 +219,7 @@ class UpdateService {
         fs.renameSync(exe, current)
         spawn(current, ['--updated'], { detached: true, stdio: 'ignore' }).unref()
       } else {
-        // Silent NSIS install over the current one; --force-run reopens the app when it finishes
-        spawn(
-          'powershell.exe',
-          ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', windowsUpdateScript(exe, process.execPath)],
-          { detached: true, stdio: 'ignore', windowsHide: true }
-        ).unref()
+        await startWindowsUpdate(exe)
       }
       setTimeout(() => app.quit(), 1500)
     } catch (err: any) {
@@ -235,6 +233,27 @@ class UpdateService {
       this.busy = false
     }
   }
+}
+
+/** Silent NSIS install over the current one. She only closes once something is really installing. */
+async function startWindowsUpdate(installer: string): Promise<void> {
+  const script = path.join(os.tmpdir(), 'capri-update.ps1')
+  const marker = path.join(os.tmpdir(), 'capri-update-started.txt')
+  fs.rmSync(marker, { force: true })
+  // With a BOM, or Windows PowerShell misreads any path that isn't plain ASCII
+  fs.writeFileSync(script, `\uFEFF${windowsUpdateScript(installer, process.execPath, marker)}`, 'utf-8')
+
+  const launch = (command: string) => {
+    const { file, args } = startIndependently(command)
+    spawn(file, args, { stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref()
+  }
+  launch(`powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "${script}"`)
+
+  for (let waited = 0; waited < 8000 && !fs.existsSync(marker); waited += 250) await wait(250)
+  if (fs.existsSync(marker)) return
+  // No script running: the installer directly, which loses the retries but still updates her
+  console.warn('[UpdateService] The update script did not start, running the installer directly')
+  launch(`"" "${installer}" /S --updated --force-run`)
 }
 
 async function download(url: string, dest: string): Promise<void> {
