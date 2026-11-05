@@ -1,3 +1,4 @@
+import { storageDir } from './storage-location'
 import { detectLanguage } from './language-detect'
 import { isCloudMode, llmFetch } from './llm-gateway'
 import { envFilePath, localFfmpegPath, pythonPath, scriptPath, voiceDataDir } from './app-paths'
@@ -87,6 +88,9 @@ export class VoiceService {
     const env: NodeJS.ProcessEnv = { ...process.env, PYTHONUTF8: '1', CAPRI_VOICE_DIR: voiceDataDir(), CAPRI_ENV_FILE: envFilePath(), PYTHONIOENCODING: 'utf-8' }
     const ffmpeg = localFfmpegPath()
     if (ffmpeg && !env.CAPRI_FFMPEG) env.CAPRI_FFMPEG = ffmpeg
+    // Whisper's model weighs about 500 MB
+    const whisper = storageDir('whisper')
+    if (whisper) env.HF_HOME = whisper
     return env
   }
 
@@ -518,8 +522,8 @@ export class VoiceService {
    * A command in any language, in English, for the part of her that recognizes commands. Waits
    * as long as a spoken translation at most; without an answer the text goes as it came.
    */
-  public async translateCommand(text: string): Promise<string | null> {
-    return this.translateForSpeech(text, 'en')
+  public async translateCommand(text: string, lang = 'en'): Promise<string | null> {
+    return this.translateForSpeech(text, lang)
   }
 
   /** Loads the translation model into VRAM ahead of time (a cold load can take ~40s on this PC). */

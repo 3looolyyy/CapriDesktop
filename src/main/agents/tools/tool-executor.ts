@@ -22,7 +22,7 @@ import * as os from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
 import { exec } from '../../services/hidden-process'
-import { shell } from 'electron'
+import { app, shell } from 'electron'
 import { clipService } from '../../services/clip-service'
 
 /** Containers and binary formats: handling them as text destroys them for good */
@@ -903,6 +903,18 @@ export class ToolExecutor {
         return { success: false, output: `"${rawTarget}" is not installed on this PC.` }
       }
 
+      // Store apps have no shortcut on disk, and "start" would open an error window for a name that doesn't exist
+      if (!rawUrl) {
+        const storeApp = await ToolExecutor.findStoreApp(rawTarget)
+        if (storeApp) {
+          exec(`explorer.exe "shell:AppsFolder\\${storeApp.id}"`)
+          return { success: true, output: `Launched ${storeApp.name} successfully!` }
+        }
+        if (!/[\\/.:]/.test(rawTarget) && !(await ToolExecutor.isOnPath(rawTarget))) {
+          return { success: false, output: `"${rawTarget}" is not installed on this PC.` }
+        }
+      }
+
       const fullCmd = rawUrl ? `cmd.exe /c start "" "${rawTarget}" "${rawUrl}"` : `cmd.exe /c start "" "${rawTarget}"`
       exec(fullCmd, (_err) => {
         if (_err && rawTarget.includes('.')) {
@@ -1306,14 +1318,43 @@ export class ToolExecutor {
     return games
   }
 
+  private static storeApps: { name: string; id: string }[] | null = null
+
+  /** Everything in the Start menu, Microsoft Store apps included */
+  private static async findStoreApp(query: string): Promise<{ name: string; id: string } | null> {
+    if (!isWindows) return null
+    const q = query.toLowerCase().trim()
+    if (q.length < 3) return null
+    if (!ToolExecutor.storeApps) {
+      ToolExecutor.storeApps = await new Promise((resolve) => {
+        exec('powershell -NoProfile -Command "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress"', { timeout: 8000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
+          try {
+            const parsed = JSON.parse(String(stdout || '[]'))
+            resolve((Array.isArray(parsed) ? parsed : [parsed]).map((a: { Name: string; AppID: string }) => ({ name: a.Name, id: a.AppID })))
+          } catch {
+            resolve(err ? null : [])
+          }
+        })
+      })
+    }
+    const apps = ToolExecutor.storeApps || []
+    return apps.find((a) => a.name.toLowerCase() === q) || apps.find((a) => a.name.toLowerCase().startsWith(q)) || apps.find((a) => a.name.toLowerCase().includes(q)) || null
+  }
+
+  private static isOnPath(name: string): Promise<boolean> {
+    return new Promise((resolve) => exec(`where "${name.replace(/"/g, '')}"`, { timeout: 4000 }, (err) => resolve(!err)))
+  }
+
   private static findShortcut(cleanQuery: string): { name: string; path: string } | null {
     if (!isWindows) return null
     const user = process.env.USERNAME || os.userInfo().username
     const candidateDirs = [
+      // The real one: OneDrive and folder moves change it
+      app.getPath('desktop'),
       `C:\\Users\\${user}\\Desktop`,
       'C:\\Users\\Public\\Desktop',
       `C:\\Users\\${user}\\Desktop\\programas`,
-      `C:\\Users\\${user}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs`,
+      path.join(process.env.APPDATA || `C:\\Users\\${user}\\AppData\\Roaming`, 'Microsoft', 'Windows', 'Start Menu', 'Programs'),
       'C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs'
     ]
 

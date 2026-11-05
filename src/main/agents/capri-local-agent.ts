@@ -165,6 +165,16 @@ function withLanguageNote<T extends { role: string; content?: string }>(history:
   return [...history.slice(0, lastUser), { role: 'system', content: directive } as T, ...history.slice(lastUser)]
 }
 
+const SHORT_MAX_TOKENS = 400
+const LONG_MAX_TOKENS = 1500
+const MAX_CONTINUATIONS = 2
+
+/** Lists, explanations and stories need room, in any language */
+function wantsLongAnswer(text: string): boolean {
+  if (text.length > 140) return true
+  return /\b\d{1,3}\b|\b(?:top|list|lista|liste|explain|explica|expl[ií]came|expliqu|erkl|spiega|wyja[sś]ni|step|paso|tutorial|guide|gu[ií]a|story|historia|histoire|geschichte|storia|write|escrib|[eé]cris|schreib|scrivi|napisz|summar|resum|recipe|receta|recette|compare|compar)/i.test(text)
+}
+
 const MAX_OWN_LINES = 5
 const OWN_LINE_MAX_AGE_MS = 30 * 60 * 1000
 
@@ -290,7 +300,9 @@ export class CapriLocalAgent extends EventEmitter {
     // understood through a translation, while the answer stays in the language it was asked in.
     if (conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
       const english = await voiceService.translateCommand(prompt.trim())
-      if (english) {
+      // Sometimes the model answers instead of translating: an answer is not the command
+      if (english && !english.includes('
+') && english.length <= prompt.length * 2 + 20) {
         console.log(`[Capri Agent] Command in ${conversationLang}, understood as: "${english}"`)
         prompt = english
       }
@@ -1341,6 +1353,10 @@ export class CapriLocalAgent extends EventEmitter {
     const effectiveLang = consciousnessService.getSpokenLanguage() || 'unknown'
     const detectedLang = effectiveLang
     let retriedLanguage = false
+    let toolsUnsupported = false
+    let continuations = 0
+    let partialReply = ''
+    const spokenText = prompt
     const model = config.model || 'qwen2.5-coder'
     const userName = getUserName()
     const desktopPath = path.join(process.env.USERPROFILE || os.homedir(), 'Desktop')
@@ -1555,11 +1571,10 @@ LANGUAGE RULE: ${langDirective}`
           messages: withLanguageNote(this.conversationHistory, langDirective),
           temperature: 0.7,
           // A running game leaves the model less than half its speed: keep spoken replies short
-          max_tokens: windowManager.isGamingModeActive() ? GAMING_MAX_TOKENS : 300,
+          max_tokens: windowManager.isGamingModeActive() ? GAMING_MAX_TOKENS : wantsLongAnswer(spokenText) ? LONG_MAX_TOKENS : SHORT_MAX_TOKENS,
           presence_penalty: 0.4,
           frequency_penalty: 0.4,
-          tools: toolsSpec,
-          tool_choice: 'auto'
+          ...(toolsUnsupported ? {} : { tools: toolsSpec, tool_choice: 'auto' })
         }
 
         const body = llmBody(requestPayload)
@@ -1579,6 +1594,12 @@ LANGUAGE RULE: ${langDirective}`
 
         if (!response.ok) {
           const errText = await response.text()
+          // Not every model can use tools: that's no reason to stop answering
+          if (!toolsUnsupported && /does not support tools|tools? (?:is|are) not supported/i.test(errText)) {
+            console.warn(`[Capri Agent] ${model} has no tool support, going on without tools`)
+            toolsUnsupported = true
+            continue
+          }
           throw new Error(`HTTP ${response.status}: ${errText}`)
         }
 
@@ -1635,7 +1656,19 @@ LANGUAGE RULE: ${langDirective}`
         }
 
         // Clean content: strip raw commands and tool blocks so the user never sees PowerShell code blocks
-        let cleanedContent = (message.content || '')
+        // The reply ran out of room: it goes on, and she says it as one answer instead of stopping halfway
+        if (choice?.finish_reason === 'length' && !windowManager.isGamingModeActive() && continuations < MAX_CONTINUATIONS && !message.tool_calls?.length) {
+          continuations++
+          partialReply += message.content || ''
+          console.log(`[Capri Agent] Reply cut by the token limit, continuing (${continuations})`)
+          this.conversationHistory.push({ role: 'assistant', content: message.content || '' })
+          this.conversationHistory.push({ role: 'system', content: 'Continue exactly where you stopped, without repeating anything and without greeting again.' })
+          continue
+        }
+
+        let cleanedContent = (partialReply + (message.content || ''))
+          // Models that think out loud
+          .replace(/<think>[\s\S]*?<\/think>/gi, '')
           .replace(/```(?:powershell|cmd|bash|sh|ps1)\s*[\s\S]*?```/gi, '')
           .replace(/<tools?>[\s\S]*?<\/tools?>/gi, '')
           .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
@@ -1645,24 +1678,30 @@ LANGUAGE RULE: ${langDirective}`
 
         // If tools are being executed, DO not emit intermediate chatter telling the user to run commands
         if (activeToolCalls.length === 0 && cleanedContent) {
+          partialReply = ''
           const isShortPrompt =
             prompt.trim().length <= 140 &&
+            !wantsLongAnswer(spokenText) &&
+            !/^\s*(?:[-*•]|\d+[.)])\s/m.test(cleanedContent) &&
             !/(?:code|código|homework|tarea|file|archivo|script|create|crea|solve|resuelve|escribe|write|programa|busca|search)/i.test(prompt)
           const sanitized = ensureRequestedLook(this.sanitizeContent(cleanedContent, isShortPrompt), requestedLook(prompt))
           // Models slip into another language, Spanish above all: she gets one chance to answer again
-          const replyLang = targetLangName && !retriedLanguage ? clearLanguageOf(stripLookTags(sanitized)) : null
-          if (replyLang && replyLang !== effectiveLang) {
+          const replyLang = targetLangName ? clearLanguageOf(stripLookTags(sanitized)) : null
+          const wrongLanguage = !!replyLang && replyLang !== effectiveLang
+          if (wrongLanguage && !retriedLanguage) {
             retriedLanguage = true
             console.warn(`[Capri Agent] Answered in ${replyLang} to a message in ${effectiveLang}, asking again`)
             this.conversationHistory.push({ role: 'system', content: `Your last answer came out in the wrong language. ${langDirective}` })
             continue
           }
-          if (sanitized) {
+          // Still wrong: it gets translated, because nobody should hear a language they didn't speak
+          const finalReply = wrongLanguage ? (await voiceService.translateCommand(sanitized, effectiveLang)) || sanitized : sanitized
+          if (finalReply) {
             this.conversationHistory.push({
               role: 'assistant',
-              content: sanitized
+              content: finalReply
             })
-            this.emitAssistant(sanitized)
+            this.emitAssistant(finalReply)
           }
         }
 

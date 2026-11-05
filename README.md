@@ -196,7 +196,7 @@ Capri understands commands in both English and Spanish.
 | Hold `Ctrl` in Game Mode | In Game Mode Capri lets clicks pass through to the game; hold `Ctrl` over her to move or touch her. |
 | `Ctrl+Alt+G` in Game Mode (Linux) | Same as holding `Ctrl`, which Linux can't detect in that mode. |
 
-> **Note:** arrow hotkeys are global: while Capri is running, those arrows are reserved for her in every application.
+> **Note:** while another app has the focus, those arrows are reserved for her. You can turn that off in the voice settings; `Ctrl+Alt+V` always works. In her own windows the arrows work normally in text fields.
 
 ### Mouse
 | Action | What it does |
@@ -389,6 +389,7 @@ Components can be installed later; features that depend on them (voice, local AI
 
 1. Download the `.deb` from **Releases**. It works on Debian-based distros (Debian, Ubuntu, Mint, Kali).
 2. Install it with its helpers: `sudo apt install ./CapriDesktop-x.y.z.deb python3-venv zstd xdotool wmctrl playerctl`.
+   On other distributions, extract the `.tar.gz` and run `capridesktop`, with the same helpers from your package manager.
 3. Open Capri and follow the same first-run wizard. Use an X11 session.
 
 Paint drawing isn't available on Linux. Everything that differs from Windows is listed in [REQUIREMENTS.md](REQUIREMENTS.md#13-linux).
@@ -401,6 +402,14 @@ Paint drawing isn't available on Linux. Everything that differs from Windows is 
 - **Spotify Desktop (optional)**: native media control.
 - **Cyber Engine Tweaks (optional)**: live Cyberpunk 2077 telemetry, together with Capri's mod. See [Installing the Cyberpunk 2077 mod](#installing-the-cyberpunk-2077-mod).
 - **Fish Audio / ElevenLabs (optional)**: API key in `voice_config.local.json` (see `voice_config.example.json`).
+
+### If she doesn't hear you
+
+Open the voice settings and press **Test** next to the microphone: it records a few seconds and shows what she understood.
+
+- **No sound coming in:** pick another microphone in the same place, or check that the system isn't blocking it.
+- **Sound, but no words:** run the setup again from the model settings. Her hearing may be incomplete.
+- **The first time** she also downloads her hearing, about 500 MB, and tells you while it's loading.
 
 ### Uninstalling
 

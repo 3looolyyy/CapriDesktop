@@ -286,7 +286,7 @@ export class WindowManager {
   ): boolean {
     if (!this.companionWin || this.companionWin.isDestroyed()) return false
 
-    const primaryDisplay = screen.getPrimaryDisplay()
+    const primaryDisplay = this.currentDisplay()
     const { workArea } = primaryDisplay
 
     if (enabled) {
@@ -351,7 +351,7 @@ export class WindowManager {
     sittingPose: 'perch' | 'front' = 'perch'
   ): void {
     if (!this.companionWin || this.companionWin.isDestroyed()) return
-    const primaryDisplay = screen.getPrimaryDisplay()
+    const primaryDisplay = this.currentDisplay()
     const { workArea } = primaryDisplay
     const width = 360
     const height = 360
@@ -395,6 +395,19 @@ export class WindowManager {
     this.forwardMouseOnLinux(this.companionWin, effective)
   }
 
+  /** The screen she's on, so moving her to another monitor keeps her there */
+  private currentDisplay(): Electron.Display {
+    if (this.companionWin && !this.companionWin.isDestroyed()) return screen.getDisplayMatching(this.companionWin.getBounds())
+    return screen.getPrimaryDisplay()
+  }
+
+  /** Outside her body clicks go to whatever is behind her window */
+  public setCompanionHitThrough(ignore: boolean): void {
+    if (this.isGamingMode || !this.companionWin || this.companionWin.isDestroyed()) return
+    if (ignore) this.companionWin.setIgnoreMouseEvents(true, { forward: true })
+    else this.companionWin.setIgnoreMouseEvents(false)
+  }
+
   public setSavedGamingPosition(pos: { x: number; y: number } | null): void {
     this.savedGamingPosition = pos
   }
@@ -428,7 +441,7 @@ export class WindowManager {
 
       // Dock to position with ample vertical room for downward speech bubble
       // If the user already moved Capri in Gaming Mode, prioritize her saved position
-      const primaryDisplay = screen.getPrimaryDisplay()
+      const primaryDisplay = this.currentDisplay()
       const workArea = primaryDisplay.workArea
       const width = 360
       const height = 540
@@ -483,7 +496,7 @@ export class WindowManager {
         } catch {}
       })
 
-      const primaryDisplay = screen.getPrimaryDisplay()
+      const primaryDisplay = this.currentDisplay()
       const workArea = primaryDisplay.workArea
       const width = 420
       const height = 520

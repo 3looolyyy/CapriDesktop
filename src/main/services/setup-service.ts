@@ -7,6 +7,7 @@
  * has to be a system package (Python) goes through the package manager and its password prompt.
  */
 
+import { setStorageRoot, storageDir } from './storage-location'
 import { app, dialog } from 'electron'
 import * as fs from 'fs'
 import * as os from 'os'
@@ -160,6 +161,23 @@ export class SetupService {
     return missing
   }
 
+  /**
+   * New location for what's installed from now on. What's already somewhere else stays there and
+   * keeps working. Ollama is told too: the copy that starts with Windows would otherwise keep
+   * filling the old disk.
+   */
+  public async changeStorage(root: string | null): Promise<void> {
+    setStorageRoot(root)
+    if (root) fs.mkdirSync(root, { recursive: true })
+    const models = storageDir('ollama-models')
+    if (isWindows) {
+      await quick('setx', ['OLLAMA_MODELS', models || ''])
+      await quick('taskkill', ['/IM', 'ollama.exe', '/F'])
+      await quick('taskkill', ['/IM', 'ollama app.exe', '/F'])
+    }
+    console.log(`[Setup] Requirements will go to ${root || 'the default folders'}`)
+  }
+
   /** An update can change her persona: an installed model keeps the old one until it's rebuilt */
   public async refreshPersona(): Promise<void> {
     if (!app.isPackaged || this.busy || isCloudMode()) return
@@ -249,7 +267,7 @@ export class SetupService {
     log(step, `winget install ${id}`)
     const code = await run(
       'winget',
-      ['install', '-e', '--id', id, '--silent', '--accept-package-agreements', '--accept-source-agreements'],
+      ['install', '-e', '--id', id, '--silent', '--accept-package-agreements', '--accept-source-agreements', ...(id === 'Ollama.Ollama' && storageDir('Ollama') ? ['--location', storageDir('Ollama') as string] : [])],
       (l) => log(step, l)
     )
     // winget returns non-zero when the package is already installed; detection decides afterwards
@@ -304,7 +322,8 @@ export class SetupService {
     const exe = path.join(os.tmpdir(), 'OllamaSetup.exe')
     if (!(await this.download(OLLAMA_INSTALLER_URL, exe, 'ollama', log))) return
     log('ollama', 'Installing Ollama...')
-    await run(exe, ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES'], (l) => log('ollama', l))
+    const dir = storageDir('Ollama')
+    await run(exe, ['/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', ...(dir ? [`/DIR=${dir}`] : [])], (l) => log('ollama', l))
     fs.rmSync(exe, { force: true })
   }
 

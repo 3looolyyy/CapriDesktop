@@ -3,6 +3,7 @@
  * Pre-game only; nothing is automated inside a running match.
  */
 
+import { leagueLockfileCandidates } from './lockfile'
 import * as https from 'https'
 import * as fs from 'fs'
 import { exec } from '../hidden-process'
@@ -779,11 +780,7 @@ export class LcuService {
   }
 
   private getCredentialsFromLockfile(): LcuCredentials | null {
-    const candidatePaths = [
-      'C:\\Riot Games\\League of Legends\\lockfile',
-      'D:\\Riot Games\\League of Legends\\lockfile',
-      'E:\\Riot Games\\League of Legends\\lockfile'
-    ]
+    const candidatePaths = leagueLockfileCandidates()
 
     for (const lockPath of candidatePaths) {
       if (fs.existsSync(lockPath)) {

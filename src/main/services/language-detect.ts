@@ -16,7 +16,7 @@ const WORDS: Record<LatinLang, string> = {
     adios adiós chau dale bueno sentate sientate arriba abajo izquierda derecha tarea escritorio crea creame modifica resolvé
     resuelve mirá che posta zarpado copado vos dibuja dibujá dibujar dibujo dibujame perro gato arbol árbol monigote carita corazon
     corazón el los las unos unas del por para pero porque también tambien despues después muy mucho más quiero pensá listo lista
-    tenés tienes soy estoy somos hay ahora aprendé aprende mostrame mostrá`,
+    tenés tienes soy estoy somos hay ahora aprendé aprende mostrame mostrá dame dime decime pasame ayudame juegos juego cada uno`,
   en: `the you your what why how where when who are was were can could will would should have has does did create make open
     close play song file desktop homework scan look see tell give with this that from for please about stop change switch language
     draw sketch paint dog cat house sun heart hello hi hey good morning night bye goodbye thanks thank and but not my me i'm it's
@@ -31,7 +31,7 @@ const WORDS: Record<LatinLang, string> = {
   de: `hallo danke guten morgen nicht bitte wie ich du und der das ist ein eine mir mach öffne kannst wir sie auf für warum
     spiele schließe lied musik suche zeichne bist hast ja nein wer wo gut sehr auch mein dein zu mit`,
   it: `ciao grazie sono della perché non gli questo questa come voglio puoi fare anche molto bene sei hai amico ora chi cosa
-    apri chiudi canzone suona cerca disegna buongiorno buonasera sì mio tuo per con dove quando`,
+    apri chiudi canzone suona cerca disegna buongiorno buonasera sì mio tuo per dove quando`,
   pl: `cześć czesc dzień dzien dobry dziękuję dziekuje proszę prosze jak się sie nie tak czy jest mam mnie ja ty dlaczego
     gdzie kiedy otwórz otworz zagraj włącz wlacz możesz mozesz jesteś jestes masz dobrze bardzo chcę chce muszę musze kim co
     piosenkę piosenke zamknij szukaj narysuj witaj hej mówisz mowisz mów mow powiedz`

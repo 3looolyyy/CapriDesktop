@@ -112,6 +112,7 @@ const api = {
     scriptLineDone: (id: number): void => ipcRenderer.send(IPC_CHANNELS.COMPANION_SCRIPT_LINE_DONE, id),
     cancelScript: (): void => ipcRenderer.send(IPC_CHANNELS.COMPANION_SCRIPT_CANCEL),
 
+    setHitThrough: (ignore: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_HIT_THROUGH, ignore),
     setClickThrough: (ignore: boolean): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_CLICK_THROUGH, ignore),
 
@@ -276,7 +277,9 @@ const api = {
       return () => ipcRenderer.removeListener(IPC_CHANNELS.SETUP_LOG, sub)
     },
     finish: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_FINISH),
-    open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_OPEN)
+    open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_OPEN),
+    getStorage: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_GET_STORAGE),
+    chooseStorage: (reset?: boolean): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, reset)
   },
 
   system: {

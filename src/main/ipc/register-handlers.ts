@@ -1,3 +1,4 @@
+import { getStorageRoot } from '../services/storage-location'
 import { scriptPlayer } from '../services/script/script-player'
 import { getLlmSettings, listCloudModels, setLlmSettings, testCloudConnection, type LlmSettingsUpdate } from '../services/llm-gateway'
 import { setupService, SetupStep } from '../services/setup-service'
@@ -219,6 +220,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SETUP_RUN, async (_event, step: SetupStep) => {
     const ok = await setupService.run(step, (s, line) => windowManager.broadcast(IPC_CHANNELS.SETUP_LOG, { step: s, line }))
     return { ok, status: await setupService.getStatus() }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.COMPANION_SET_HIT_THROUGH, (_event, ignore: boolean) => {
+    windowManager.setCompanionHitThrough(!!ignore)
+    return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SETUP_GET_STORAGE, () => getStorageRoot())
+  ipcMain.handle(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, async (_event, reset?: boolean) => {
+    if (reset) {
+      await setupService.changeStorage(null)
+      return null
+    }
+    const picked = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    if (picked.canceled || !picked.filePaths[0]) return getStorageRoot()
+    await setupService.changeStorage(path.join(picked.filePaths[0], 'CapriData'))
+    return getStorageRoot()
   })
 
   ipcMain.handle(IPC_CHANNELS.ONBOARDING_OPEN, () => {

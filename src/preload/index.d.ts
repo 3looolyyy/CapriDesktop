@@ -51,6 +51,7 @@ export interface IElectronAPI {
     setEyeMode: (enabled: boolean) => Promise<boolean>
     setGamingMode: (enabled: boolean, corner?: string) => Promise<boolean>
     getGamingMode: () => Promise<boolean>
+    setHitThrough: (ignore: boolean) => Promise<boolean>
     setClickThrough: (ignore: boolean) => Promise<boolean>
     onScriptEvent: (
       callback: (
@@ -118,6 +119,8 @@ export interface IElectronAPI {
     onLog: (callback: (entry: { step: string; line: string }) => void) => () => void
     finish: () => Promise<boolean>
     open: () => Promise<boolean>
+    getStorage: () => Promise<string | null>
+    chooseStorage: (reset?: boolean) => Promise<string | null>
   }
   system: {
     selectDirectory: () => Promise<string | null>

@@ -7,6 +7,7 @@ import { useT } from '../utils/useUiLang'
 import { localizeLine } from '../../../shared/lines'
 import { getLineLanguage, setLineLanguage } from '../utils/lineLanguage'
 import { micErrorKind, micErrorLine, openMicrophone } from '../utils/microphone'
+import { voiceVolume } from '../utils/soundSettings'
 import { useCompanionStore, CompanionEmotionState } from '../stores/useCompanionStore'
 import { useAgentStore } from '../stores/useAgentStore'
 import dialogueBlipAudio from '../assets/dialogue_blip.wav'
@@ -122,6 +123,35 @@ export const CompanionView: React.FC = () => {
   }, [])
   const [isWindowHovered, setIsWindowHovered] = useState(false)
   const [isGamingMode, setIsGamingMode] = useState<boolean>(false)
+
+  // Her window is much wider than she is: only her body takes clicks, the rest goes to what's behind.
+  // Mouse moves keep arriving while it lets clicks through. On Linux they don't, so it stays as it was.
+  useEffect(() => {
+    if (isGamingMode || navigator.userAgent.includes('Linux') || !window.api?.companion?.setHitThrough) return
+    let ignoring = false
+    const set = (next: boolean) => {
+      if (next === ignoring) return
+      ignoring = next
+      window.api.companion.setHitThrough(next).catch(() => {})
+    }
+    const onMove = (e: MouseEvent) => {
+      const art = document.querySelector('[data-capri-art]')
+      const over = document.elementFromPoint(e.clientX, e.clientY)
+      if (e.buttons || !art || document.querySelector('.fixed.inset-0') || over?.closest('input,textarea,button,select,a,[data-capri-ui]')) {
+        set(false)
+        return
+      }
+      const box = art.getBoundingClientRect()
+      const half = (Math.min(box.width, box.height) * 0.72) / 2
+      const inside = Math.abs(e.clientX - (box.left + box.width / 2)) <= half && e.clientY >= box.top && e.clientY <= box.bottom
+      set(!inside)
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      set(false)
+    }
+  }, [isGamingMode])
 
   // Gaming Mode: Capri is click-through so she never steals clicks from the game.
   // Hold Ctrl over her to interact / drag her (mouse moves are forwarded even while click-through).
@@ -514,6 +544,7 @@ export const CompanionView: React.FC = () => {
       return
     }
     const audio = new Audio(line.audioDataUrl)
+    audio.volume = voiceVolume()
     audio.playbackRate = 1.05
     activeAudioRef.current = audio
     audio.onended = finish
@@ -574,7 +605,7 @@ export const CompanionView: React.FC = () => {
       // New Dialogue Blip Voice Mode (@dialogue_blip.wav)
       if (voiceTypeRef.current === 'blip') {
         const audio = new Audio(dialogueBlipAudio)
-        audio.volume = 0.65
+        audio.volume = 0.65 * voiceVolume()
         activeAudioRef.current = audio
 
         currentSpokenTextRef.current = clean
@@ -632,6 +663,7 @@ export const CompanionView: React.FC = () => {
 
       if (res.success && res.audioDataUrl) {
         const audio = new Audio(res.audioDataUrl)
+        audio.volume = voiceVolume()
         audio.playbackRate = 1.05
         activeAudioRef.current = audio
 
