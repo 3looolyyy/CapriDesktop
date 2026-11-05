@@ -1,0 +1,3 @@
+[excited] I just updated, {name}! This is version one, the real deal.
+[happy] I speak ten languages, I change my look while I talk, and I remember what I say on my own, so you can ask me why I did it. [playful] And if I ever lose my voice, I fix it myself.
+[warmly] If part of my setup is missing, you can run it again from the model settings.

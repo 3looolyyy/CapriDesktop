@@ -1,0 +1,3 @@
+[excited] I just updated, {name}! This one is about how we talk.
+[happy] All my fixed lines now come in ten languages: quickhacks, gigs, League, Spotify, all of it. [playful] Whichever language you pick, that's the one I use.
+[warmly] And if you talk to me in another language, I answer you in that one.

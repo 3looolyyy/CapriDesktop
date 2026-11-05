@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "description": "Counter-build tactical item recommendations based on opposing champion compositions.",
+  "champions": {
+    "aatrox": { "tags": ["heavy_healing"], "reason": "cura masiva" },
+    "warwick": { "tags": ["heavy_healing"], "reason": "curación descontrolada en baja vida" },
+    "vladimir": { "tags": ["heavy_healing", "ap_burst"], "reason": "regeneración y burst AP" },
+    "dr. mundo": { "tags": ["heavy_healing", "tank_hp"], "reason": "regeneración extrema y vida masiva" },
+    "mundo": { "tags": ["heavy_healing", "tank_hp"], "reason": "regeneración extrema y vida masiva" },
+    "soraka": { "tags": ["heavy_healing"], "reason": "curaciones globales continuas" },
+    "yuumi": { "tags": ["heavy_healing", "heavy_shields"], "reason": "sustain parasitario constante" },
+    "briar": { "tags": ["heavy_healing"], "reason": "robo de vida extremo" },
+    "swain": { "tags": ["heavy_healing", "drain_tank"], "reason": "drenaje de vida en área" },
+    "sylas": { "tags": ["heavy_healing", "ap_burst"], "reason": "curación súbita con la W" },
+    "illaoi": { "tags": ["heavy_healing", "ad_bruiser"], "reason": "curación multiplicada por tentáculos" },
+    "kayn": { "tags": ["heavy_healing"], "reason": "curación masiva en forma Rhaast" },
+    "volibear": { "tags": ["heavy_healing", "heavy_shields"], "reason": "mordida curativa y escudo" },
+    "olaf": { "tags": ["heavy_healing"], "reason": "robo de vida furioso a baja salud" },
+    "fiora": { "tags": ["heavy_healing"], "reason": "vitales curativos y zona de curación" },
+    "irelia": { "tags": ["heavy_healing"], "reason": "recuperación continua por impactos de Q" },
+    "sett": { "tags": ["heavy_shields"], "reason": "escudo colosal por daño recibido" },
+    "shen": { "tags": ["heavy_shields", "tank_hp"], "reason": "escudo global y bloqueo de ataques" },
+    "lulu": { "tags": ["heavy_shields"], "reason": "escudos potenciados y polimorfia" },
+    "karma": { "tags": ["heavy_shields"], "reason": "escudos grupales acelerados" },
+    "janna": { "tags": ["heavy_shields"], "reason": "escudos con AD extra y desenganche" },
+    "tahm kench": { "tags": ["heavy_shields", "tank_hp"], "reason": "vida gris convertible en escudo gigante" },
+    "mordekaiser": { "tags": ["heavy_shields", "ap_bruiser"], "reason": "escudo acumulable durante el duelo" },
+    "milio": { "tags": ["heavy_shields", "heavy_healing"], "reason": "escudos y hogueras de curación" },
+    "sona": { "tags": ["heavy_shields", "heavy_healing"], "reason": "escudos y curaciones en aura" },
+    "taric": { "tags": ["heavy_shields", "heavy_healing"], "reason": "inmunidad, escudos y armadura" },
+    "sion": { "tags": ["tank_hp", "tank_armor"], "reason": "vida infinita por farmeo" },
+    "cho'gath": { "tags": ["tank_hp"], "reason": "vida descomunal por festines" },
+    "chogath": { "tags": ["tank_hp"], "reason": "vida descomunal por festines" },
+    "zac": { "tags": ["tank_hp", "heavy_healing"], "reason": "vida y regeneración por partículas" },
+    "ornn": { "tags": ["tank_hp", "tank_armor"], "reason": "estadísticas defensivas mejoradas" },
+    "sejuani": { "tags": ["tank_hp", "heavy_cc"], "reason": "armadura pasiva y aturdimiento" },
+    "rammus": { "tags": ["tank_armor"], "reason": "armadura extrema y reflejo de daño" },
+    "malphite": { "tags": ["tank_armor", "heavy_engage"], "reason": "armadura multiplicada e impacto sísmico" },
+    "zed": { "tags": ["ad_assassin"], "reason": "asesino AD de sombras y burst de marca" },
+    "talon": { "tags": ["ad_assassin"], "reason": "rotaciones y letalidad de área" },
+    "qiyana": { "tags": ["ad_assassin"], "reason": "letalidad explosiva en paredes" },
+    "khazix": { "tags": ["ad_assassin"], "reason": "letalidad y daño por aislamiento" },
+    "kha'zix": { "tags": ["ad_assassin"], "reason": "letalidad y daño por aislamiento" },
+    "rengar": { "tags": ["ad_assassin"], "reason": "saltos invisibles con daño crítico" },
+    "shaco": { "tags": ["ad_assassin"], "reason": "invisibilidad, cajas y apuñalamiento trasero" },
+    "naafiri": { "tags": ["ad_assassin"], "reason": "manada y sangrado físico" },
+    "evelynn": { "tags": ["ap_assassin"], "reason": "camuflaje y ejecución mágica repentina" },
+    "leblanc": { "tags": ["ap_assassin"], "reason": "distorsión rápida y ráfagas mágicas" },
+    "akali": { "tags": ["ap_assassin"], "reason": "humo defensivo y ejecuciones con shuriken" },
+    "katarina": { "tags": ["ap_assassin"], "reason": "dagas, saltos y loto mortal" },
+    "fizz": { "tags": ["ap_assassin"], "reason": "juguetón invulnerable y mordisco de tiburón" },
+    "syndra": { "tags": ["ap_burst"], "reason": "bombardeo concentrado de esferas" },
+    "veigar": { "tags": ["ap_burst", "heavy_cc"], "reason": "jaula de choque y poder mágico infinito" },
+    "lux": { "tags": ["ap_burst", "heavy_cc"], "reason": "ataduras luminosas y rayo final" },
+    "viktor": { "tags": ["ap_burst"], "reason": "rayo de la muerte y tormenta del caos" },
+    "morgana": { "tags": ["heavy_cc"], "reason": "atadura oscura prolongada y escudo negro" },
+    "leona": { "tags": ["heavy_cc", "tank_hp"], "reason": "cadena continua de aturdimientos" },
+    "nautilus": { "tags": ["heavy_cc", "tank_hp"], "reason": "anclaje ineludible e impacto abisal" },
+    "amumu": { "tags": ["heavy_cc", "ap_tank"], "reason": "maldición de la momia en área" },
+    "blitzcrank": { "tags": ["heavy_cc"], "reason": "agarre de proyectil letal" },
+    "thresh": { "tags": ["heavy_cc"], "reason": "sentencia de muerte y linterna" }
+  },
+  "rules": {
+    "heavy_healing": {
+      "priority": 1,
+      "threshold": 1,
+      "es": "Tienen mucha curación con {champs}. Te conviene priorizar cortacuración temprano (Llamado del Verdugo, Chaleco de Zarzas o Orbe del Olvido).",
+      "en": "Heavy healing detected on {champs}. Rush anti-heal early (Executioner's Calling, Bramble Vest, or Oblivion Orb)."
+    },
+    "heavy_shields": {
+      "priority": 2,
+      "threshold": 2,
+      "es": "Tienen escudos pesados ({champs}). Si sos AD considerá Colmillo de Serpiente; para magos, Llama Sombría rinde genial.",
+      "en": "Heavy shields on enemy squad ({champs}). Consider Serpent's Fang for physical damage or Shadowflame for AP penetration."
+    },
+    "tank_hp": {
+      "priority": 3,
+      "threshold": 2,
+      "es": "Veo tanques con una tonelada de vida ({champs}). Ítems de porcentaje de vida como Rey Arruinado, Liandry o Recuerdos de Lord Dominik van a derretirlos.",
+      "en": "High health tanks detected ({champs}). Max-HP shred items like Blade of the Ruined King, Liandry's, or Lord Dominik's will melt them down."
+    },
+    "ad_assassin": {
+      "priority": 4,
+      "threshold": 2,
+      "es": "Tienen varios asesinos AD con letalidad ({champs}). Un Zhonya para magos o un Ángel Guardián temprano te va a salvar el pellejo.",
+      "en": "Multiple AD assassins with lethality ({champs}). Early Zhonya's Hourglass or Guardian Angel will keep your chrome intact."
+    },
+    "ap_burst": {
+      "priority": 5,
+      "threshold": 2,
+      "es": "Ojo con el daño mágico explosivo de {champs}. Resistencia mágica como Fauces de Malmortius, Fuerza de la Naturaleza o Velo del Hada son claves.",
+      "en": "Burst magic threat from {champs}. Magic resist items like Maw of Malmortius, Force of Nature, or Banshee's Veil are key."
+    },
+    "heavy_cc": {
+      "priority": 6,
+      "threshold": 2,
+      "es": "Tienen mucho control de masas ({champs}). Botas de Mercurio o Fajín de Mercurio van a ser tus mejores amigos en las peleas.",
+      "en": "Heavy crowd control on their side ({champs}). Mercury's Treads or Quicksilver Sash will keep you mobile in teamfights."
+    }
+  }
+}

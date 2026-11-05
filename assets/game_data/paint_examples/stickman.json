@@ -1,0 +1,13 @@
+{
+  "subject": "monigote",
+  "comment": "Un clásico monigote simpático dibujado con palitos",
+  "shapes": [
+    { "type": "circle", "cx": 50, "cy": 25, "r": 10 },
+    { "type": "arc", "cx": 50, "cy": 27, "rx": 5, "ry": 3, "startAngle": 0, "endAngle": 180 },
+    { "type": "line", "x1": 50, "y1": 35, "x2": 50, "y2": 65 },
+    { "type": "line", "x1": 50, "y1": 45, "x2": 25, "y2": 38 },
+    { "type": "line", "x1": 50, "y1": 45, "x2": 75, "y2": 38 },
+    { "type": "line", "x1": 50, "y1": 65, "x2": 30, "y2": 90 },
+    { "type": "line", "x1": 50, "y1": 65, "x2": 70, "y2": 90 }
+  ]
+}

@@ -1,0 +1,280 @@
+/* Setup window in the Cyberpunk 2077 menu style: flat dark background, CP red, sharp chamfered
+   corners, condensed uppercase type, cyan only for things that are online. No glows or gradients. */
+
+.cp-vars {
+  --cp-red: #ff5f57;
+  --cp-red-hi: #ff8a7a;
+  --cp-red-dim: #a8433d;
+  --cp-red-line: rgba(255, 95, 87, 0.28);
+  --cp-red-fill: #251011;
+  --cp-cyan: #5ef6ff;
+  --cp-yellow: #fcee0a;
+  --cp-bg: #0b0708;
+  --cp-panel: #110a0b;
+  --cp-text: #e6d6cb;
+  --cp-muted: #9b8279;
+  color: var(--cp-red);
+  font-family: var(--cp-font-ui);
+  --cp-font-ui: 'Rajdhani', 'Bahnschrift SemiCondensed', 'Bahnschrift', 'Yu Gothic UI', 'Malgun Gothic', 'Microsoft YaHei UI', 'Segoe UI', sans-serif;
+}
+
+.cp-root {
+  position: relative;
+  background: var(--cp-bg);
+}
+
+/* Very faint scanlines over everything */
+.cp-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 95, 87, 0.03) 3px 4px);
+}
+
+.cp-mono {
+  font-family: 'Share Tech Mono', Consolas, 'Yu Gothic UI', 'Malgun Gothic', 'Microsoft YaHei UI', monospace;
+}
+
+.cp-title {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+}
+
+.cp-label {
+  font-family: 'Share Tech Mono', Consolas, 'Yu Gothic UI', 'Malgun Gothic', 'Microsoft YaHei UI', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cp-red-dim);
+}
+
+/* Chamfered panel with a 1px border: ::before is the border, ::after the fill */
+.cp-frame {
+  --c: 10px;
+  --frame: var(--cp-red-line);
+  --fill: var(--cp-panel);
+  position: relative;
+  isolation: isolate;
+}
+.cp-frame::before,
+.cp-frame::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+}
+.cp-frame::before {
+  inset: 0;
+  background: var(--frame);
+}
+.cp-frame::after {
+  inset: 1px;
+  background: var(--fill);
+}
+.cp-frame.is-active {
+  --frame: var(--cp-red);
+  --fill: var(--cp-red-fill);
+}
+.cp-frame.is-warn {
+  --frame: rgba(252, 238, 10, 0.45);
+  --fill: #141106;
+}
+
+.cp-option {
+  transition: color 0.1s;
+}
+.cp-option:hover:not(.is-active) {
+  --frame: rgba(255, 95, 87, 0.6);
+}
+
+/* Selected row marker, like the game's menus */
+.cp-marker {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--cp-red);
+}
+
+.cp-btn {
+  --c: 9px;
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+  background: var(--cp-red);
+  color: #140808;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.cp-btn:hover:not(:disabled) {
+  background: var(--cp-red-hi);
+}
+.cp-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cp-btn-ghost {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--cp-red);
+  cursor: pointer;
+}
+.cp-btn-ghost:hover:not(:disabled) {
+  --frame: var(--cp-red);
+  color: var(--cp-red-hi);
+}
+.cp-btn-ghost:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cp-input {
+  background: transparent;
+  color: var(--cp-text);
+  caret-color: var(--cp-red);
+  outline: none;
+}
+.cp-input::placeholder {
+  color: #5d4540;
+}
+
+/* Header rule with a solid block at the start */
+.cp-rule {
+  position: relative;
+  height: 1px;
+  background: var(--cp-red-line);
+}
+.cp-rule::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 64px;
+  height: 3px;
+  background: var(--cp-red);
+}
+
+.cp-seg {
+  height: 4px;
+  background: rgba(255, 95, 87, 0.18);
+}
+.cp-seg.on {
+  background: var(--cp-red);
+}
+.cp-seg.ok {
+  background: var(--cp-cyan);
+}
+.cp-seg.busy {
+  background: var(--cp-yellow);
+  animation: cp-blink 0.8s steps(2) infinite;
+}
+
+/* Indeterminate bar under the component being installed */
+.cp-busy-bar {
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--cp-yellow) 0 10px, transparent 10px 16px);
+  background-size: 32px 2px;
+  animation: cp-march 0.6s linear infinite;
+}
+
+.cp-blink {
+  animation: cp-blink 1s steps(2) infinite;
+}
+
+.cp-page {
+  animation: cp-in 0.18s steps(4) both;
+}
+
+@keyframes cp-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes cp-march {
+  to {
+    background-position: 32px 0;
+  }
+}
+@keyframes cp-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cp-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.cp-scroll::-webkit-scrollbar-thumb {
+  background: var(--cp-red-dim);
+}
+.cp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Shared by the whole HUD: Dev Mode, settings windows and Capri's own buttons */
+.cp-font {
+  font-family: 'Rajdhani', 'Bahnschrift SemiCondensed', 'Bahnschrift', 'Yu Gothic UI', 'Malgun Gothic', 'Microsoft YaHei UI', 'Segoe UI', sans-serif;
+}
+.cp-cut {
+  --c: 7px;
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+}
+.cp-vars button:not(.cp-plain) {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.cp-vars select {
+  background-color: #110a0b !important;
+  color: var(--cp-text) !important;
+}
+.cp-vars select option {
+  background-color: #110a0b;
+  color: var(--cp-text);
+}
+.cp-vars .cyber-input {
+  background-color: #110a0b !important;
+  color: var(--cp-text) !important;
+  border: 1px solid var(--cp-red-line) !important;
+  border-radius: 0;
+}
+.cp-vars .cyber-input:focus {
+  border-color: var(--cp-red) !important;
+  box-shadow: none !important;
+}
+.cp-vars .terminal-btn,
+.cp-vars .cyber-btn {
+  --c: 7px;
+  clip-path: polygon(0 0, calc(100% - var(--c)) 0, 100% var(--c), 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+  background: #1c0e0f;
+  border: 1px solid var(--cp-red-line);
+  border-radius: 0;
+  color: var(--cp-red);
+  font-family: inherit;
+  font-size: 14px;
+}
+.cp-vars .terminal-btn:hover:not(:disabled),
+.cp-vars .cyber-btn:hover:not(:disabled) {
+  background: #2a1213;
+  border-color: var(--cp-red);
+  color: var(--cp-red-hi);
+}
+.cp-vars ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cp-vars ::-webkit-scrollbar-thumb {
+  background: var(--cp-red-dim);
+  border-radius: 0;
+}

@@ -1,0 +1,15 @@
+{
+  "provider": "fish-audio",
+  "fish_audio": {
+    "api_key": "YOUR_FISH_AUDIO_API_KEY",
+    "model": "s2.1-pro-free",
+    "format": "mp3"
+  },
+  "edge_tts": {
+    "voice": "en-US-AriaNeural"
+  },
+  "robotic_filter": {
+    "enabled": true,
+    "preset": "default"
+  }
+}

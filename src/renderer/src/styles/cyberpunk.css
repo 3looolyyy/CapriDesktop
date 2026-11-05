@@ -1,0 +1,507 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes blink-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+:root {
+  color-scheme: dark;
+  --bg-terminal: #090a0f;
+  --bg-surface: #0e1017;
+  --bg-surface-elevated: #141722;
+  --border-subtle: #1e2230;
+  --border-active: #32384e;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  --accent-cyan: #38bdf8;
+  --accent-amber: #f59e0b;
+  --accent-emerald: #10b981;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, 'SF Mono', Menlo, Monaco, monospace;
+  user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Minimal Terminal Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #222634;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4259;
+}
+
+/* Terminal CLI Button */
+.terminal-btn {
+  background: #12151e;
+  border: 1px solid #242938;
+  color: #c9d1d9;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-btn:hover {
+  background: #1a1e2b;
+  border-color: #3f4760;
+  color: #ffffff;
+}
+
+.terminal-btn:active {
+  transform: translateY(1px);
+}
+
+.terminal-btn-active {
+  background: #1e2638;
+  border-color: #38bdf8;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+/* Backward compatibility for cyber-btn */
+.cyber-btn {
+  background: #12151e;
+  border: 1px solid #242938;
+  color: #c9d1d9;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cyber-btn:hover {
+  background: #1a1e2b;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+/* CLI Text Box */
+.terminal-box {
+  background: #090a0f;
+  border: 1px solid #1e2230;
+  border-radius: 6px;
+}
+
+/* =========================================================================
+   Cyberpunk Form Inputs, Selects & Native Dropdown Controls
+   ========================================================================= */
+
+/* Dark Form Controls Baseline */
+input, select, textarea {
+  color-scheme: dark !important;
+  background-color: #0c0e17;
+  color: #f1f5f9;
+}
+
+/* Cyberpunk Input Box */
+.cyber-input {
+  background-color: #0c0e17 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #283046 !important;
+  border-radius: 4px;
+  padding: 6px 10px;
+  outline: none;
+  font-family: inherit;
+  font-size: 11px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cyber-input:focus {
+  border-color: #ec4899 !important;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.25) !important;
+}
+
+.cyber-input::placeholder {
+  color: #64748b !important;
+}
+
+/* Native Select & Dropdowns Dark Mode */
+select {
+  color-scheme: dark !important;
+  background-color: #0e111a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #242938 !important;
+}
+
+select:focus {
+  border-color: #ec4899 !important;
+}
+
+/* Categories (optgroup) in Select */
+optgroup {
+  color-scheme: dark !important;
+  background-color: #161b28 !important;
+  color: #f472b6 !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  padding: 6px 8px !important;
+  border-bottom: 1px solid #242a3a !important;
+}
+
+/* Options in Select */
+option {
+  color-scheme: dark !important;
+  background-color: #0c0e17 !important;
+  color: #e2e8f0 !important;
+  font-size: 11px !important;
+  padding: 6px 10px !important;
+}
+
+option:hover,
+option:focus,
+option:checked {
+  background-color: #242d42 !important;
+  color: #38bdf8 !important;
+}
+
+/* =========================================================================
+   Cyberpunk Edgerunners Pure Silhouette Razor Glitch (Cortes Filosos Rojo y Verde)
+   - 100% confined to the PNG silhouette (ZERO box or external scanlines)
+   - Razor cuts that sever and displace the character horizontally
+   ========================================================================= */
+
+/* Slice A: Head & Mid-body sever shifting left */
+@keyframes razor-slice-a {
+  0% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 28%, 0 28%, 0 54%, 100% 54%, 100% 78%, 0 78%);
+    transform: translate(-26px, 0) skewX(-7deg);
+    filter: brightness(1.35) contrast(1.25);
+  }
+  25% {
+    clip-path: polygon(0 14%, 100% 14%, 100% 42%, 0 42%, 0 68%, 100% 68%, 100% 100%, 0 100%);
+    transform: translate(28px, 0) skewX(8deg);
+    filter: brightness(1.4) contrast(1.3);
+  }
+  50% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 22%, 0 22%, 0 48%, 100% 48%, 100% 72%, 0 72%);
+    transform: translate(-16px, 0) skewX(-4deg);
+    filter: brightness(1.2);
+  }
+  75% {
+    clip-path: polygon(0 18%, 100% 18%, 100% 36%, 0 36%, 0 62%, 100% 62%, 100% 84%, 0 84%);
+    transform: translate(8px, 0) skewX(2deg);
+    filter: brightness(1.1);
+  }
+  100% {
+    clip-path: none;
+    transform: translate(0, 0) skewX(0);
+    filter: none;
+  }
+}
+
+/* Slice B: Chest & Legs sever shifting right */
+@keyframes razor-slice-b {
+  0% {
+    clip-path: polygon(0 28%, 100% 28%, 100% 54%, 0 54%, 0 78%, 100% 78%, 100% 100%, 0 100%);
+    transform: translate(26px, 0) skewX(7deg);
+    filter: brightness(1.35) contrast(1.25);
+  }
+  25% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 14%, 0 14%, 0 42%, 100% 42%, 100% 68%, 0 68%);
+    transform: translate(-28px, 0) skewX(-8deg);
+    filter: brightness(1.4) contrast(1.3);
+  }
+  50% {
+    clip-path: polygon(0 22%, 100% 22%, 100% 48%, 0 48%, 0 72%, 100% 72%, 100% 100%, 0 100%);
+    transform: translate(16px, 0) skewX(4deg);
+    filter: brightness(1.2);
+  }
+  75% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 18%, 0 18%, 0 36%, 100% 36%, 0 62%, 100% 62%, 0 84%, 100% 84%, 100% 100%, 0 100%);
+    transform: translate(-8px, 0) skewX(-2deg);
+    filter: brightness(1.1);
+  }
+  100% {
+    clip-path: none;
+    transform: translate(0, 0) skewX(0);
+    filter: none;
+  }
+}
+
+/* Pure Silhouette Red Channel Ghost: Sliced jagged left projection */
+@keyframes razor-silhouette-red {
+  0% {
+    clip-path: polygon(0 4%, 100% 4%, 100% 26%, 0 26%, 0 50%, 100% 50%, 100% 76%, 0 76%);
+    transform: translate(-34px, 0) skewX(-9deg);
+    filter: drop-shadow(-12px 0 0 #ff003c) drop-shadow(-22px 0 6px rgba(255, 0, 60, 0.95)) saturate(400%) contrast(180%);
+    opacity: 0.95;
+  }
+  25% {
+    clip-path: polygon(0 22%, 100% 22%, 100% 50%, 0 50%, 0 70%, 100% 70%, 100% 96%, 0 96%);
+    transform: translate(36px, 0) skewX(10deg);
+    filter: drop-shadow(14px 0 0 #ff003c) drop-shadow(24px 0 8px rgba(255, 0, 80, 0.9));
+    opacity: 0.9;
+  }
+  50% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 20%, 0 20%, 0 44%, 100% 44%, 100% 68%, 0 68%);
+    transform: translate(-22px, 0) skewX(-6deg);
+    filter: drop-shadow(-10px 0 0 #ff003c);
+    opacity: 0.85;
+  }
+  75% {
+    clip-path: polygon(0 12%, 100% 12%, 100% 34%, 0 34%, 0 60%, 100% 60%, 100% 82%, 0 82%);
+    transform: translate(12px, 0) skewX(3deg);
+    filter: drop-shadow(5px 0 0 #ff003c);
+    opacity: 0.6;
+  }
+  100% {
+    clip-path: none;
+    transform: translate(0, 0) skewX(0);
+    opacity: 0;
+  }
+}
+
+/* Pure Silhouette Green Channel Ghost: Sliced jagged right projection */
+@keyframes razor-silhouette-green {
+  0% {
+    clip-path: polygon(0 26%, 100% 26%, 100% 52%, 0 52%, 0 74%, 100% 74%, 100% 100%, 0 100%);
+    transform: translate(34px, 0) skewX(9deg);
+    filter: drop-shadow(12px 0 0 #00ff55) drop-shadow(22px 0 6px rgba(0, 255, 85, 0.95)) saturate(400%) contrast(180%);
+    opacity: 0.95;
+  }
+  25% {
+    clip-path: polygon(0 0%, 100% 0%, 100% 22%, 0 22%, 0 46%, 100% 46%, 100% 70%, 0 70%);
+    transform: translate(-36px, 0) skewX(-10deg);
+    filter: drop-shadow(-14px 0 0 #00ff55) drop-shadow(-24px 0 8px rgba(0, 255, 120, 0.9));
+    opacity: 0.9;
+  }
+  50% {
+    clip-path: polygon(0 18%, 100% 18%, 100% 46%, 0 46%, 0 68%, 100% 68%, 100% 100%, 0 100%);
+    transform: translate(22px, 0) skewX(6deg);
+    filter: drop-shadow(10px 0 0 #00ff55);
+    opacity: 0.85;
+  }
+  75% {
+    clip-path: polygon(0 32%, 100% 32%, 100% 58%, 0 58%, 0 78%, 100% 78%, 100% 96%, 0 96%);
+    transform: translate(-12px, 0) skewX(-3deg);
+    filter: drop-shadow(-5px 0 0 #00ff55);
+    opacity: 0.6;
+  }
+  100% {
+    clip-path: none;
+    transform: translate(0, 0) skewX(0);
+    opacity: 0;
+  }
+}
+
+.capri-silhouette-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.capri-silhouette-red {
+  mix-blend-mode: screen;
+  animation: razor-silhouette-red 0.36s steps(1, end) forwards;
+}
+
+.capri-silhouette-green {
+  mix-blend-mode: screen;
+  animation: razor-silhouette-green 0.36s steps(1, end) forwards;
+}
+
+.capri-silhouette-slice-a {
+  animation: razor-slice-a 0.36s steps(1, end) forwards;
+}
+
+.capri-silhouette-slice-b {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  animation: razor-slice-b 0.36s steps(1, end) forwards;
+}
+
+/* =========================================================================
+   Cyberpunk Arcade HUD // Terminal Futuristic Styles (Goal Style 1:1)
+   ========================================================================= */
+
+.font-terminal {
+  font-family: 'Share Tech Mono', 'VT323', Consolas, 'Courier New', monospace;
+}
+
+.font-hud {
+  font-family: 'Orbitron', 'Share Tech Mono', sans-serif;
+}
+
+/* Chamfered Box Polygon (Cut Top-Left and Cut Bottom-Right) */
+.hud-chamfer-box {
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+}
+
+.hud-chamfer-box-inner {
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+
+.hud-chamfer-small {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.hud-chamfer-small-inner {
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+
+/* HUD L-Brackets */
+.hud-bracket-tl {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 14px;
+  height: 14px;
+  border-top: 3px solid #00f0ff;
+  border-left: 3px solid #00f0ff;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+.hud-bracket-tr {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  border-top: 3px solid #00f0ff;
+  border-right: 3px solid #00f0ff;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+.hud-bracket-bl {
+  position: absolute;
+  bottom: -3px;
+  left: -3px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 3px solid #00f0ff;
+  border-left: 3px solid #00f0ff;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+.hud-bracket-br {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 3px solid #00f0ff;
+  border-right: 3px solid #00f0ff;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+/* CRT Scanlines Overlay */
+.hud-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.32) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 60, 0.04),
+    rgba(0, 255, 100, 0.02),
+    rgba(0, 240, 255, 0.04)
+  );
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+/* Animated Equalizer Waveform Bars */
+@keyframes eq-bar-1 { 0%, 100% { height: 4px; } 50% { height: 13px; } }
+@keyframes eq-bar-2 { 0%, 100% { height: 11px; } 50% { height: 5px; } }
+@keyframes eq-bar-3 { 0%, 100% { height: 7px; } 50% { height: 15px; } }
+@keyframes eq-bar-4 { 0%, 100% { height: 14px; } 50% { height: 6px; } }
+@keyframes eq-bar-5 { 0%, 100% { height: 5px; } 50% { height: 12px; } }
+@keyframes eq-bar-6 { 0%, 100% { height: 10px; } 50% { height: 4px; } }
+
+.animate-eq-1 { animation: eq-bar-1 0.7s ease-in-out infinite; }
+.animate-eq-2 { animation: eq-bar-2 0.55s ease-in-out infinite; }
+.animate-eq-3 { animation: eq-bar-3 0.8s ease-in-out infinite; }
+.animate-eq-4 { animation: eq-bar-4 0.6s ease-in-out infinite; }
+.animate-eq-5 { animation: eq-bar-5 0.75s ease-in-out infinite; }
+.animate-eq-6 { animation: eq-bar-6 0.65s ease-in-out infinite; }
+
+/* Capri Headpat / Petting Interaction Motion */
+@keyframes capri-headpat-squish {
+  0% {
+    transform: translateY(0px) scale(1, 1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(8px) scale(1.06, 0.92) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(1px) scale(0.98, 1.02) rotate(0deg);
+  }
+  75% {
+    transform: translateY(8px) scale(1.05, 0.93) rotate(2.5deg);
+  }
+  100% {
+    transform: translateY(0px) scale(1, 1) rotate(0deg);
+  }
+}
+
+@keyframes hand-pat-cycle {
+  0%, 100% {
+    transform: translateY(-4px) scale(1);
+  }
+  50% {
+    transform: translateY(6px) scale(1.03);
+  }
+}
+
+.animate-capri-pet {
+  animation: capri-headpat-squish 0.38s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  transform-origin: bottom center !important;
+  will-change: transform;
+}
+
+.animate-hand-pet {
+  animation: hand-pat-cycle 0.38s ease-in-out infinite;
+  will-change: transform;
+}
+
+

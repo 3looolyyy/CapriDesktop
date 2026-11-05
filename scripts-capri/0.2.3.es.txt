@@ -1,0 +1,2 @@
+[excited] ¡Recién me actualicé, {name}! Aprendí un truco nuevo.
+[happy] Ahora puedo cambiar cómo me veo en medio de una frase: mi ojo cyber, mis dos ojos grandes, o el rojo cuando la cosa se pone seria. [playful] Pedime que te lo muestre, o mirá cómo lo hago cuando venga al caso.

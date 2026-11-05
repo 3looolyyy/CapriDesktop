@@ -1,0 +1,6 @@
+# Python packages used by Capri's voice engine (scripts/capri_voice.py)
+# Installed automatically by the first-run setup into the app's own virtual environment.
+edge-tts>=6.1
+faster-whisper>=1.1
+# faster-whisper 1.2.1 calls av.open(metadata_errors=...), which PyAV 19 removed
+av<19

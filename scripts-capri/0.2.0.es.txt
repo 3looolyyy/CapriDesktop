@@ -1,0 +1,5 @@
+[excited] ¡Me actualicé, {name}! Te cuento qué cambió.
+[happy] Antes solo podía pensar con mi modelo local; ahora también puedo usar uno en la nube, si me pasás la clave. [playful] Y la interfaz ya está en diez idiomas, con pinta de Cyberpunk en el modo dev y en mis botones.
+[curious] Antes solo comentaba algunos juegos; ahora comento cualquiera que tengas abierto.
+[proud] En Cyberpunk, si me preguntás qué hacemos, te recomiendo gigs, misiones o cazar ciberpsicópatas, y solo te digo que lo marqué si el juego me lo confirma. Tampoco te aviso más cosas que no pasaron.
+[teasing] Y en el LoL, si te banean el campeón, paso al siguiente de tu lista en vez de quedarme mirando. [giggles]

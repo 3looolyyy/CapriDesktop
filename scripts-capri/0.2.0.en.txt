@@ -1,0 +1,5 @@
+[excited] I just updated, {name}! Here's what changed.
+[happy] Before, I could only think with my local model; now I can also use a cloud one, if you give me the key. [playful] And the interface now comes in ten languages, with a Cyberpunk look in Dev Mode and on my buttons.
+[curious] Before, I only commented on a few games; now I comment on any game you have open.
+[proud] In Cyberpunk, if you ask me what to do, I recommend gigs, missions or cyberpsycho hunts, and I only say I marked it if the game confirms it. I also stopped warning you about things that didn't happen.
+[teasing] And in LoL, if your champion gets banned, I move on to the next one on your list instead of just standing there. [giggles]

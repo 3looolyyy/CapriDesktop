@@ -1,0 +1,114 @@
+# Windows installer (NSIS): npm run dist:win. Linux .deb: npm run dist:linux
+# appId keeps the old name on purpose: it's what makes a new version install over an existing one
+appId: dev.cybercompanion.capri
+productName: Capri Desktop
+copyright: Copyright © 2026 nunezValen
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - out/**
+  - package.json
+
+# Read-only runtime resources, placed next to app.asar (process.resourcesPath)
+extraResources:
+  - from: scripts
+    to: scripts
+    filter:
+      - '*.py'
+      - '*.ps1'
+      - requirements.txt
+      - Modelfile.capri
+  # Patch scripts Capri reads after an update (one per version and language)
+  - from: scripts-capri
+    to: scripts-capri
+    filter:
+      - '*.txt'
+  - from: assets
+    to: assets
+    filter:
+      - icon.png
+      - icon.ico
+      - game_data/**
+      - '!game_data/learned_drawings/*.json'
+      - '!game_data/cyberpunk_mod/commands.json'
+      - capri_voice/voice_config.json
+      - capri_voice/voice_config.example.json
+
+linux:
+  # Only .deb: an AppImage needs FUSE 2, which distros like Kali no longer ship
+  target:
+    - target: deb
+      arch: [x64]
+  category: Utility
+  icon: assets/icon.png
+  maintainer: nunezValen
+  synopsis: Capri, a cyberpunk desktop companion
+  artifactName: CapriDesktop-${version}.${ext}
+  desktop:
+    entry:
+      Name: Capri Desktop
+
+deb:
+  # Up to 0.2.0 the package was called cyber-companion: without this apt would keep both
+  fpm:
+    - --replaces=cyber-companion
+    - --conflicts=cyber-companion
+  # What Capri's features call on the desktop. FFmpeg and Ollama are handled by her setup
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+    - libasound2
+  recommends:
+    - xdotool
+    - wmctrl
+    - playerctl
+    - python3-venv
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+  artifactName: CapriDesktop-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Capri Desktop
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  # Cyberpunk 2077 look: artwork from tools/installer-art.py, colors and texts in installer.nsh
+  installerSidebar: assets/installerSidebar.bmp
+  uninstallerSidebar: assets/uninstallerSidebar.bmp
+  installerHeader: assets/installerHeader.bmp
+  include: assets/installer.nsh
+  # Language picker when the installer starts
+  multiLanguageInstaller: true
+  displayLanguageSelector: true
+  installerLanguages:
+    - en_US
+    - es_ES
+    - pt_BR
+    - fr_FR
+    - de_DE
+    - it_IT
+    - ru_RU
+    - ja_JP
+    - ko_KR
+    - zh_CN
+  # Launch right away: the first-run wizard asks the user's name and sets up voice / AI
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false

@@ -1,0 +1,3 @@
+[excited] I just updated, {name}! This one's short.
+[happy] This program used to be called Cyber Companion; now it's Capri Desktop, and you'll see the new name in the installer and on my shortcuts. [warmly] Don't worry: I remember everything, and your data stayed right where it was.
+[proud] And before, when I opened Ollama myself, I sometimes ran out of room in my head and forgot who I am. [giggles] Now I have twice the space, so I stay me.

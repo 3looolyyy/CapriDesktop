@@ -1,0 +1,3 @@
+[excited] ¡Recién me actualicé, {name}! Esta es la versión uno, la de verdad.
+[happy] Hablo diez idiomas, cambio de look mientras hablo y me acuerdo de lo que digo por mi cuenta, así que podés preguntarme por qué lo hice. [playful] Y si me quedo sin voz, me la arreglo sola.
+[warmly] Si me falta algo de la configuración, podés volver a ejecutarla desde los ajustes del modelo.
