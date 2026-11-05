@@ -196,7 +196,7 @@ Capri understands commands in both English and Spanish.
 | Hold `Ctrl` in Game Mode | In Game Mode Capri lets clicks pass through to the game; hold `Ctrl` over her to move or touch her. |
 | `Ctrl+Alt+G` in Game Mode (Linux) | Same as holding `Ctrl`, which Linux can't detect in that mode. |
 
-> **Note:** while another app has the focus, those arrows are reserved for her. You can turn that off in the voice settings; `Ctrl+Alt+V` always works. In her own windows the arrows work normally in text fields.
+> **Note:** while another app has the focus, those arrows are reserved for her. You can change those keys or turn them off in the voice settings; `Ctrl+Alt+V` always works. In her own windows the arrows work normally in text fields.
 
 ### Mouse
 | Action | What it does |

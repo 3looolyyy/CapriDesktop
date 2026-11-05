@@ -98,6 +98,13 @@ export const IPC_CHANNELS = {
   VOICE_STT_STATE: 'voice:sttState',
   ARROW_KEYS_GET: 'shortcuts:getArrowKeys',
   ARROW_KEYS_SET: 'shortcuts:setArrowKeys',
+  HOTKEYS_GET: 'shortcuts:getHotkeys',
+  HOTKEYS_SET: 'shortcuts:setHotkey',
+  HOTKEYS_RESET: 'shortcuts:resetHotkeys',
+  HOTKEYS_CHANGED: 'shortcuts:hotkeysChanged',
+  GAMING_OPACITY_GET: 'companion:getGamingOpacity',
+  GAMING_OPACITY_SET: 'companion:setGamingOpacity',
+  GAMING_OPACITY_CHANGED: 'companion:gamingOpacityChanged',
   VOICE_SYNTHESIZE: 'voice:synthesize',
   VOICE_TOGGLE_RECORDING: 'voice:toggle-recording',
   /** Renderer -> main: push-to-talk recording started/stopped (enables the global Esc to cancel) */
