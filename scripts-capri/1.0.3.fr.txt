@@ -1,0 +1,2 @@
+[excited] Nouvelle mise à jour, {name} !
+[happy] Sous Linux, avant, je t'envoyais sur une page pour télécharger le paquet. [giggles] Maintenant je le télécharge moi-même, je te demande ton mot de passe si besoin et je reviens toute seule.
