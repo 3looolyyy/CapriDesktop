@@ -14,6 +14,9 @@ export const IPC_CHANNELS = {
   SPOTIFY_PLAY: 'spotify:play',
   // Window
   DECK_TOGGLE: 'deck:toggle',
+  COMPANION_MENU: 'companion:menu',
+  COMPANION_CHAT_ACTIVE: 'companion:chatActive',
+  DESKTOP_OPEN_SETTINGS: 'desktop:settings',
   DECK_SHOW: 'deck:show',
   DECK_HIDE: 'deck:hide',
   DECK_STATUS: 'deck:status',

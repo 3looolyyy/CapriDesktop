@@ -290,9 +290,12 @@ export const ScannerView: React.FC = () => {
     e.stopPropagation()
     try {
       const next = !isContinuous
+      if (next && visionMode === 'cloud' && !window.confirm('Enable Live Scan? While this scanner is open, changed frame contents will be sent to your cloud vision provider at most once per minute. Close the scanner or turn Live off to stop. Live stays off after restarting Capri.')) return
       setIsContinuous(await window.api.scanner.setContinuous(next))
     } catch (err) {
       console.error('[ScannerView] Toggle continuous error:', err)
+      setIsContinuous(false)
+      window.alert(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -348,7 +351,7 @@ export const ScannerView: React.FC = () => {
         {/* Right: Scan, Continuous, & Close Buttons */}
         <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
           <button title="Fit the scanner within this display's usable area" className="px-2 py-1 border border-cyan-500 text-cyan-300 rounded text-[10px] whitespace-nowrap" onClick={async()=>{const b=await window.api.scanner.fitScreen();if(b){boundsRef.current=b;setDimensions({width:b.width,height:b.height})}}}>Fit screen</button>
-          {visionMode === 'cloud' && <span className="text-[10px] text-cyan-300 whitespace-nowrap" title="Only explicit scans send images to your selected cloud provider">Cloud vision</span>}
+          {visionMode === 'cloud' && <span className="text-[10px] text-cyan-300 whitespace-nowrap" title="Scans send images to your selected cloud provider; Live requires your confirmation">Cloud vision</span>}
           {!localAI && visionMode !== 'cloud' && <button className="px-2 py-1 border border-amber-500 text-amber-300 rounded text-[10px]" title="Allow local AI models to run again; scanning can use substantial memory" onClick={async()=>setLocalAI(await window.api.scanner.setLocalAIEnabled(true))}>Enable local AI</button>}
           {/* Scan Button */}
           <button
@@ -367,14 +370,14 @@ export const ScannerView: React.FC = () => {
 
           {/* Continuous Mode Toggle */}
           <button
-            disabled={visionMode === 'cloud'}
+            disabled={visionMode === 'disabled'}
             onClick={handleToggleContinuous}
             className={`px-2 py-1 rounded font-mono text-[10px] font-semibold tracking-wide transition-all duration-200 border cursor-pointer ${
               isContinuous
                 ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                 : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
             }`}
-            title={visionMode === 'cloud' ? 'Cloud vision uses explicit scans only; background uploading is disabled.' : 'Continuous mode: auto-scans when frame content changes'}
+            title={visionMode === 'cloud' ? 'Opt-in cloud Live Scan: changed frame contents, at most once per minute while open' : 'Continuous mode: auto-scans when frame content changes'}
           >
             {isContinuous ? '● LIVE ON' : '○ LIVE OFF'}
           </button>

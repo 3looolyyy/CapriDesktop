@@ -318,11 +318,19 @@ export class WindowManager {
 
     // Restore companion floating/walking on desktop
     if (this.companionWin && !this.companionWin.isDestroyed()) {
-      this.companionWin.show()
+      if (isMac && this.isGamingMode) this.companionWin.showInactive()
+      else this.companionWin.show()
       this.companionWin.setAlwaysOnTop(true, 'screen-saver', 1)
       this.companionWin.moveTop()
     }
 
+    // Returning from settings must preserve the game overlay, position and frozen roaming.
+    if (isMac && this.isGamingMode) {
+      this.setCompanionClickThrough(true)
+      this.broadcast(IPC_CHANNELS.COMPANION_STATE_CHANGED, 'ojos')
+      this.broadcast(IPC_CHANNELS.DECK_STATUS, false)
+      return
+    }
     // Resume roaming if it was active
     roamingManager.resume()
 
@@ -551,7 +559,7 @@ export class WindowManager {
       this.companionWin.moveTop()
 
       // Periodic top-most keepalive so DirectX full-screen games cannot cover Capri
-      this.gamingKeepAliveInterval = setInterval(() => {
+      if (!isMac) this.gamingKeepAliveInterval = setInterval(() => {
         if (
           this.companionWin &&
           !this.companionWin.isDestroyed() &&

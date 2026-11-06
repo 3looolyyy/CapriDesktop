@@ -1,3 +1,4 @@
+import { gameCompanionState } from '../../../shared/companion-appearance'
 import { ShakeDetector } from '../../../shared/mac-feature-policy'
 import { wakeListeningPrompt } from '../../../shared/voice-policy'
 import { personalize } from '../utils/userName'
@@ -168,15 +169,15 @@ export const CompanionView: React.FC = () => {
   useEffect(() => {
     if (!isGamingMode || !window.api?.companion?.setClickThrough) return
     let ignoring = true
-    window.api.companion.setClickThrough(true).catch(() => {})
+    window.api.companion.setClickThrough(!isDesktopChatOpenRef.current).catch(() => {})
     const update = (ctrl: boolean) => {
-      const want = !ctrl
+      const want = !ctrl && !isDesktopChatOpenRef.current
       if (want === ignoring) return
       ignoring = want
       window.api.companion.setClickThrough(want).catch(() => {})
     }
-    const onMove = (e: MouseEvent) => update(e.ctrlKey)
-    const onKey = (e: KeyboardEvent) => update(e.ctrlKey)
+    const onMove = (e: MouseEvent) => update(e.ctrlKey || (/Mac/i.test(navigator.platform) && e.metaKey))
+    const onKey = (e: KeyboardEvent) => update(e.ctrlKey || (/Mac/i.test(navigator.platform) && e.metaKey))
     const onLeave = () => update(false)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('keydown', onKey)
@@ -190,6 +191,10 @@ export const CompanionView: React.FC = () => {
     }
   }, [isGamingMode])
   const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState<boolean>(false)
+  const openVoiceSettings = () => {
+    if (/Mac/i.test(navigator.platform)) void window.api.desktop.openSettings(true)
+    else setIsVoiceSettingsOpen(true)
+  }
   const [isContextMenuOpen, setIsContextMenuOpen] = useState<boolean>(false)
   const tr = useT()
 
@@ -1388,7 +1393,7 @@ export const CompanionView: React.FC = () => {
   }, [setEmotion, setSpeech, setRoamingStatus, setTabMode, isEyeMode, isDesktopChatOpen])
 
   // Desktop companion state: normal walking/standing/idle roaming behavior by default
-  const desktopCompanionState = useMemo<CompanionEmotionState>(() => {
+  const requestedCompanionState = useMemo<CompanionEmotionState>(() => {
     // A script decides her look word by word, above everything else. Between its lines she stays
     // in the talking animation instead of flashing another pose.
     if (scriptLook) return scriptLook
@@ -1451,6 +1456,8 @@ export const CompanionView: React.FC = () => {
     // Default desktop state: standing full-body avatar (never ojos!)
     return 'standing'
   }, [scriptLook, isScriptPlaying, isSpeaking, speech, isTabMode, isDesktopChatOpen, isEyeMode, emotion, isExecuting, isSynthesizingVoice, isRoaming, isRecordingVoice, isGamingMode])
+
+  const desktopCompanionState = gameCompanionState(navigator.platform, isGamingMode, requestedCompanionState)
 
   // Dynamic user-facing label representing Capri's current active state
   const companionStatusLabel = useMemo(() => {
@@ -1763,6 +1770,7 @@ export const CompanionView: React.FC = () => {
     e.preventDefault()
     e.stopPropagation()
     if (dragStartRef.current?.moved || isScaredActiveRef.current) return
+    if (/Mac/i.test(navigator.platform)) { void window.api.companion.showMenu(); return }
     setIsContextMenuOpen((prev) => !prev)
   }
 
@@ -1771,6 +1779,7 @@ export const CompanionView: React.FC = () => {
     const next = !isDesktopChatOpenRef.current
     setIsDesktopChatOpen(next)
     if (next) {
+      if (/Mac/i.test(navigator.platform)) void window.api.companion.setChatActive(true)
       window.api?.companion?.setEyeMode?.(true)
       window.api?.roaming?.setActive(false)
       const isEs = currentLangRef.current === 'es'
@@ -1850,7 +1859,7 @@ export const CompanionView: React.FC = () => {
     if (isVoiceSettingsCmd) {
       setIsExecuting(false)
       isExecutingRef.current = false
-      setIsVoiceSettingsOpen(true)
+      openVoiceSettings()
 
       const userMsg: DesktopChatMessage = {
         id: `user-${Date.now()}`,
@@ -2041,7 +2050,7 @@ export const CompanionView: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => setIsVoiceSettingsOpen(true)}
+                      onClick={() => openVoiceSettings()}
                       className="p-1.5 rounded text-xs font-bold transition-all cursor-pointer bg-black/80 hover:bg-cyan-950/60 text-cyan-400 border border-cyan-500/40 hover:border-cyan-400"
                       title="Configurar Voz TTS (Fish Audio / Edge-TTS / ElevenLabs)"
                     >
@@ -2169,7 +2178,7 @@ export const CompanionView: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => setIsVoiceSettingsOpen(true)}
+                      onClick={() => openVoiceSettings()}
                       className="p-1.5 rounded text-xs font-bold transition-all cursor-pointer bg-black/80 hover:bg-cyan-950/60 text-cyan-400 border border-cyan-500/40 hover:border-cyan-400"
                       title="Configurar Voz TTS (Fish Audio / Edge-TTS / ElevenLabs)"
                     >
@@ -2480,7 +2489,7 @@ export const CompanionView: React.FC = () => {
           <button
             onClick={() => {
               setIsContextMenuOpen(false)
-              setIsVoiceSettingsOpen(true)
+              openVoiceSettings()
             }}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-none hover:bg-[#2a1213] text-cp-500 hover:text-white transition-colors text-left cursor-pointer"
           >

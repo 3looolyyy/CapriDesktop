@@ -26,6 +26,7 @@ export function createScannerWindow(): BrowserWindow {
 
   const scannerWindow = new BrowserWindow({
     title: 'Capri // Neural Scanner Frame',
+    ...(isMac ? { type: 'panel' } : {}),
     icon: iconPath,
     width,
     height,

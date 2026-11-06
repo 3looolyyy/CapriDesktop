@@ -225,7 +225,9 @@ case "spotify-result": emit(spotifyResult(args.dropFirst().first ?? ""))
 case "foreground":
     if let app = NSWorkspace.shared.frontmostApplication {
         let w = windows(app.processIdentifier).first { ($0["pid"] as? Int32) == app.processIdentifier }
-        emit(["title": w?["title"] ?? "", "process": app.localizedName ?? "", "path": app.bundleURL?.path ?? "", "pid": app.processIdentifier])
+        var result: [String: Any] = ["title": w?["title"] ?? "", "process": app.localizedName ?? "", "path": app.bundleURL?.path ?? "", "pid": app.processIdentifier]
+        if let w = w { result["bounds"] = ["x": w["left"] ?? 0, "y": w["top"] ?? 0, "width": w["width"] ?? 0, "height": w["height"] ?? 0] }
+        emit(result)
     } else { emit([:]) }
 case "processes": emit(NSWorkspace.shared.runningApplications.map { ["pid": $0.processIdentifier, "name": $0.localizedName ?? "", "bundle": $0.bundleIdentifier ?? ""] as [String: Any] })
 case "quit":

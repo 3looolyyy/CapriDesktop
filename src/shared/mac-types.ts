@@ -12,4 +12,4 @@ export interface PlatformStatus {
   }
 }
 
-export interface DesktopPreferences {openAtLogin:boolean;loginSupported:boolean;positionPinned:boolean;screenCommentMinutes:number;speechModel:'base'|'small';speechReady:boolean}
+export interface DesktopPreferences {openAtLogin:boolean;loginSupported:boolean;positionPinned:boolean;screenCommentMinutes:number;gameCommentMinutes:number;speechModel:'base'|'small';speechReady:boolean}

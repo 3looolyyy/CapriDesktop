@@ -1,4 +1,4 @@
-import { saveFeatures } from '../services/mac-feature-settings'
+import { featureSettings, saveFeatures } from '../services/mac-feature-settings'
 import { scheduleScreenComments } from '../services/screen-comment-service'
 import { screen as desktopScreen } from 'electron'
 import { setLocalAIEnabled } from '../services/local-ai-policy'
@@ -8,7 +8,7 @@ import { getLlmSettings, listCloudModels, setLlmSettings, testCloudConnection, t
 import { setupService, SetupStep } from '../services/setup-service'
 import * as os from 'os'
 import { getUserName } from '../services/user-profile'
-import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
+import { ipcMain, dialog, BrowserWindow, shell, Menu } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { IPC_CHANNELS, CompanionEmotionState } from './channels'
@@ -36,6 +36,40 @@ import { isMac } from '../services/platform'
 import { desktopPreferences, setOpenAtLogin } from '../services/mac-preferences'
 import type { PlacementCommand } from '../../shared/placement'
 export function registerIpcHandlers(): void {
+  const openSettings = (voice = false) => {
+    windowManager.showDeck()
+    const win = windowManager.getDeckWindow()
+    const send = () => win?.webContents.send(voice ? 'desktop:open-voice-settings' : 'desktop:open-settings')
+    if (win?.webContents.isLoading()) win.webContents.once('did-finish-load', send)
+    else send()
+  }
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_OPEN_SETTINGS, (_event, voice) => {
+    if (isMac) openSettings(voice === true)
+  })
+  ipcMain.handle(IPC_CHANNELS.COMPANION_CHAT_ACTIVE, (event, active) => {
+    const win=windowManager.getCompanionWindow()
+    if (isMac && win && event.sender===win.webContents && active===true) {windowManager.setCompanionClickThrough(false);win.focus()}
+  })
+  ipcMain.handle(IPC_CHANNELS.COMPANION_MENU, event => {
+    const win = windowManager.getCompanionWindow()
+    if (!isMac || !win || event.sender !== win.webContents) return
+    const prefs = featureSettings()
+    Menu.buildFromTemplate([
+      { label: 'Chat · ⌘⌥C', click: () => windowManager.broadcast(IPC_CHANNELS.COMPANION_TOGGLE_CHAT) },
+      { label: 'Toggle Hey Capri · ⌘⌥L', click: () => windowManager.broadcast(IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING) },
+      { type: 'separator' },
+      { label: 'Game mode', type: 'checkbox', checked: windowManager.isGamingModeActive(), click: item => windowManager.setGamingMode(item.checked) },
+      { label: 'Game screen comments', submenu: [
+        { label: 'Screenshots go to your cloud vision provider', enabled: false },
+        ...[0,1,3,5,10].map(minutes => ({ label: minutes ? `Every ${minutes} minute${minutes===1 ? '' : 's'}` : 'Off', type: 'radio' as const, checked: prefs.gameCommentMinutes===minutes, click: () => { saveFeatures({gameCommentMinutes:minutes}); scheduleScreenComments() } }))
+      ] },
+      { label: 'Scanner · ⌘⌥S', click: () => scannerService.toggle() },
+      { type: 'separator' },
+      { label: 'Voice & companion settings…', click: () => openSettings(true) },
+      { label: 'Mac settings…', click: () => openSettings() },
+      { label: 'Open main app', click: () => windowManager.showDeck() }
+    ]).popup({ window: win })
+  })
   ipcMain.handle(IPC_CHANNELS.DESKTOP_CONFIGURE,(_event,update)=>{
     if(!isMac || !update || typeof update!=='object') throw new Error('Invalid Mac settings')
     saveFeatures(update)
@@ -355,7 +389,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.LLM_GET_SETTINGS, () => getLlmSettings())
-  ipcMain.handle(IPC_CHANNELS.LLM_SET_SETTINGS, (_event, update: LlmSettingsUpdate) => setLlmSettings(update))
+  ipcMain.handle(IPC_CHANNELS.LLM_SET_SETTINGS, (_event, update: LlmSettingsUpdate) => { if(isMac) scannerService.setContinuous(false); return setLlmSettings(update) })
   ipcMain.handle(IPC_CHANNELS.LLM_LIST_MODELS, (_event, baseUrl: string, apiKey?: string) => listCloudModels(baseUrl, apiKey))
   ipcMain.handle(IPC_CHANNELS.LLM_TEST, (_event, baseUrl: string, model: string, apiKey?: string) =>
     testCloudConnection(baseUrl, model, apiKey)

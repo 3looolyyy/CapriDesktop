@@ -18,7 +18,15 @@ export function macHelper<T>(command: string, args: string[] = []): Promise<T> {
   )
 }
 export type MacWindow = WindowedApp & { pid: number; process: string; path: string; frontmost: boolean }
-export const macForegroundWindow = (): Promise<ForegroundWindow> => macHelper('foreground')
+let foregroundRequest: Promise<ForegroundWindow> | null = null
+let foregroundAt = 0
+export function macForegroundWindow(): Promise<ForegroundWindow> {
+  if (!foregroundRequest || Date.now()-foregroundAt > 1000) {
+    foregroundAt=Date.now()
+    foregroundRequest=macHelper<ForegroundWindow>('foreground').then(value=>({bounds:value.bounds,title:value.title || '',process:value.process || '',path:value.path || '',pid:Number(value.pid) || 0})).catch(error=>{foregroundRequest=null;throw error})
+  }
+  return foregroundRequest
+}
 export const macWindows = (): Promise<MacWindow[]> => macHelper('windows')
 export async function macWindowGeometry(id: string): Promise<MacWindow | null> {
   return (await macWindows().catch(() => [])).find((w) => w.hwnd === id) || null

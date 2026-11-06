@@ -41,8 +41,10 @@ import type { SpotifySettings, SpotifyMethod, SpotifyDevice } from '../main/serv
 
 const api = {
   desktop: {
+    openSettings: (voice = false): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_OPEN_SETTINGS, voice),
+    onOpenVoiceSettings: (callback:()=>void):(()=>void) => {const listener=()=>callback();ipcRenderer.on('desktop:open-voice-settings',listener);return ()=>ipcRenderer.removeListener('desktop:open-voice-settings',listener)},
     onOpenSettings: (callback:()=>void):(()=>void) => {const listener=()=>callback();ipcRenderer.on('desktop:open-settings',listener);return ()=>{ipcRenderer.removeListener('desktop:open-settings',listener)}},
-    configure: (update:{screenCommentMinutes?:number;speechModel?:'base'|'small'}):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_CONFIGURE,update),
+    configure: (update:{screenCommentMinutes?:number;gameCommentMinutes?:number;speechModel?:'base'|'small'}):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_CONFIGURE,update),
     preferences: ():Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_PREFERENCES),
     setOpenAtLogin: (enabled:boolean):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_LOGIN,enabled),
     place: (target:PlacementCommand):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_PLACE,target)
@@ -114,6 +116,8 @@ const api = {
 
   // Companion Character Controls & Events
   companion: {
+    setChatActive: (active:boolean): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_CHAT_ACTIVE, active),
+    showMenu: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_MENU),
     setState: (state: CompanionEmotionState): Promise<string> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_STATE, state),
 

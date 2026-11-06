@@ -1,3 +1,6 @@
+import { gameCompanionState } from '../src/shared/companion-appearance'
+import { MacGameContext, macGameContext } from '../src/main/services/mac-game-context'
+import { detectGameName } from '../src/main/services/game/game-commentary'
 import { consciousnessService } from '../src/main/services/consciousness-service'
 import { setStorageRoot, getStorageRoot } from '../src/main/services/storage-location'
 import { speechModelsDir } from '../src/main/services/app-paths'
@@ -516,7 +519,7 @@ test('glitch reaction needs a deliberate shake, not dragging or a slow wiggle', 
 
 
 test('automatic screen comments never capture while off, denied or locked', async t => {
-  t.mock.timers.enable({apis:['setInterval']})
+  t.mock.timers.enable({apis:['setInterval','Date'],now:Date.now()})
   const flush=()=>new Promise(resolve=>setImmediate(resolve))
   try {
     saveFeatures({screenCommentMinutes:0})
@@ -672,4 +675,92 @@ test('abbreviated and flexible volume requests can reach native controls, not a 
  assert.equal(offerDesktopTools('darwin','cloud','could you adjust my computer volume to 70 please'),true)
  assert.equal(isMacSystemRequest('write code to change volume'),false)
  assert.equal(isMacSystemRequest('change your volume'),false)
+})
+
+
+test('Mac game identity recognizes ULTRAKILL and Steam bundles without misidentifying browser pages',()=>{
+  assert.equal(detectGameName({title:'ULTRAKILL',process:'ULTRAKILL',path:'/Applications/ULTRAKILL.app',pid:12}),'ULTRAKILL')
+  assert.equal(detectGameName({title:'ULTRAKILL',process:'wine64-preloader',path:'/opt/wine/bin/wine',pid:12}),'ULTRAKILL')
+  assert.equal(detectGameName({title:'ULTRAKILL review — YouTube',process:'Firefox',path:'/Applications/Firefox.app',pid:13}),null)
+  assert.equal(detectGameName({title:'Hades',process:'Hades',path:'/Users/test/Library/Application Support/Steam/steamapps/common/Hades/Hades.app',pid:12}),'Hades')
+  const game={title:'Cyberpunk 2077',process:'Cyberpunk2077',path:'/Games/Cyberpunk 2077/game.exe',pid:12}
+  assert.equal(detectGameName(game),null,'Windows adapters retain their original routing')
+  assert.equal(detectGameName(game,true),'Cyberpunk 2077','Mac can still recognize the game without claiming an adapter')
+})
+test('game context follows foreground changes, expires and never invents match telemetry',()=>{
+  const context=new MacGameContext()
+  context.update({title:'ULTRAKILL',process:'ULTRAKILL',path:'/Applications/ULTRAKILL.app',pid:12},100)
+  assert.equal(context.current(101)?.foreground,true)
+  assert.match(context.prompt(101),/ULTRAKILL/)
+  assert.match(context.prompt(101),/not live events/)
+  context.update({title:'Home',process:'Firefox',path:'/Applications/Firefox.app',pid:13},102)
+  assert.equal(context.current(103)?.foreground,false)
+  assert.match(context.prompt(103),/switched away/)
+  assert.equal(context.current(30101),null)
+  context.clear()
+  assert.equal(context.prompt(104),'')
+})
+test('game interval persists independently and a game-only schedule never captures other apps',async t=>{
+  assert.equal(saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1}).gameCommentMinutes,1)
+  assert.equal(saveFeatures({speechModel:'base'}).gameCommentMinutes,1)
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const before=screenCalls.captures
+  try {
+    setTestMediaStatus('granted');macGameContext.clear();scheduleScreenComments()
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before)
+    for(let i=0;i<4;i++) {
+      macGameContext.update({title:'ULTRAKILL',process:'ULTRAKILL',path:'/Applications/ULTRAKILL.app',pid:12})
+      t.mock.timers.tick(15000);await flush()
+    }
+    assert.equal(screenCalls.captures,before+1)
+    macGameContext.clear()
+    t.mock.timers.tick(120000);await flush()
+    assert.equal(screenCalls.captures,before+1)
+  } finally {
+    saveFeatures({gameCommentMinutes:0});scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+
+
+test('macOS Roblox is recognized without treating Roblox browser pages or Studio as a game',()=>{
+  assert.equal(detectGameName({title:'Roblox',process:'Roblox',path:'/Applications/Roblox.app',pid:18287}),'Roblox')
+  assert.equal(detectGameName({title:'Roblox',process:'RobloxPlayerBeta',path:'C:\\Roblox\\RobloxPlayerBeta.exe',pid:12}),'Roblox')
+  assert.equal(detectGameName({title:'Roblox — Firefox',process:'Firefox',path:'/Applications/Firefox.app',pid:13}),null)
+  assert.equal(detectGameName({title:'Roblox Studio',process:'RobloxStudio',path:'/Applications/RobloxStudio.app',pid:13}),null)
+})
+test('one-minute game comments override an eight-minute startup delay and survive brief focus changes',async t=>{
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const before=screenCalls.captures
+  const game={title:'Roblox',process:'Roblox',path:'/Applications/Roblox.app',pid:18287}
+  try {
+    setTestMediaStatus('granted');macGameContext.clear()
+    saveFeatures({screenCommentMinutes:8,gameCommentMinutes:1});scheduleScreenComments()
+    for(let i=0;i<4;i++) {
+      if(i===2) macGameContext.update(null)
+      else macGameContext.update(game)
+      t.mock.timers.tick(15000);await flush()
+    }
+    assert.equal(screenCalls.captures,before+1,'First game scan is due after one minute, not eight')
+    for(let i=0;i<4;i++) {
+      macGameContext.update(i===1 ? null : game)
+      t.mock.timers.tick(15000);await flush()
+    }
+    assert.equal(screenCalls.captures,before+2,'Brief focus changes must not restart the countdown')
+  } finally {
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+
+
+test('Mac game appearance stays framed while thinking, speaking or running a script, until explicitly disabled',()=>{
+  for(const state of ['thinking','working','talking','asustada','closed','standing','ojos2']) {
+    assert.equal(gameCompanionState('MacIntel',true,state),'ojos')
+    assert.equal(gameCompanionState('darwin',true,state),'ojos')
+    assert.equal(gameCompanionState('MacIntel',false,state),state)
+    assert.equal(gameCompanionState('Win32',true,state),state)
+    assert.equal(gameCompanionState('Linux',true,state),state)
+  }
 })

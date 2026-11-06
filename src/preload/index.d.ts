@@ -27,8 +27,10 @@ import type { PlatformStatus, MacPermission } from '../shared/mac-types'
 import type { SpotifySettings, SpotifyMethod, SpotifyDevice } from '../main/services/spotify-service'
 export interface IElectronAPI {
   desktop: {
+    openSettings: (voice?:boolean) => Promise<void>
+    onOpenVoiceSettings: (callback:()=>void) => ()=>void
     onOpenSettings: (callback:()=>void) => ()=>void
-    configure: (update:{screenCommentMinutes?:number;speechModel?:'base'|'small'}) => Promise<DesktopPreferences>
+    configure: (update:{screenCommentMinutes?:number;gameCommentMinutes?:number;speechModel?:'base'|'small'}) => Promise<DesktopPreferences>
     preferences: () => Promise<DesktopPreferences>
     setOpenAtLogin: (enabled:boolean) => Promise<DesktopPreferences>
     place: (target:PlacementCommand) => Promise<DesktopPreferences>
@@ -74,6 +76,8 @@ export interface IElectronAPI {
     openExternal: (url: string) => Promise<boolean>
   }
   companion: {
+    setChatActive: (active:boolean) => Promise<void>
+    showMenu: () => Promise<void>
     setState: (state: CompanionEmotionState) => Promise<string>
     setTabMode: (enabled: boolean, keepPosition?: boolean) => Promise<boolean>
     setEyeMode: (enabled: boolean) => Promise<boolean>

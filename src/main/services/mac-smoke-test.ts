@@ -103,10 +103,10 @@ export async function runMacSmokeTest(reportFile: string): Promise<void> {
       for (let i = 0; i < 20; i++) {
         await new Promise((resolve) => setTimeout(resolve, 400))
         text = await deck.webContents.executeJavaScript('document.body.innerText')
-        if (text.toLowerCase().includes('mac permissions & spotify')) break
+        if (text.toLowerCase().includes('mac settings')) break
       }
       fs.writeFileSync(path.join(path.dirname(reportFile), 'mac-settings.png'), (await deck.capturePage()).toPNG())
-      if (!text.toLowerCase().includes('mac permissions & spotify')) throw new Error('Mac settings did not render')
+      if (!text.toLowerCase().includes('mac settings')) throw new Error('Mac settings did not render')
       fs.writeFileSync(path.join(path.dirname(reportFile), 'mac-settings.png'), (await deck.capturePage()).toPNG())
       return { rendered: true }
     })

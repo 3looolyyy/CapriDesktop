@@ -32,6 +32,7 @@ export const DevDeckView: React.FC = () => {
   useEffect(()=>window.api.desktop.onOpenSettings(()=>setActiveTab('mac')),[])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false)
+  useEffect(()=>window.api.desktop.onOpenVoiceSettings(()=>setIsVoiceModalOpen(true)),[])
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false)
   const { setEmotion, setSpeech } = useCompanionStore()
   const t = useT()

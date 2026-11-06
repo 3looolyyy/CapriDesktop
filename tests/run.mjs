@@ -23,3 +23,11 @@ await build({
   ],
 })
 execFileSync(process.execPath, ['--test', 'work/tests.cjs'], { stdio: 'inherit' })
+
+await build({
+  entryPoints:['tests/scanner.test.ts'],outfile:'work/scanner-tests.cjs',bundle:true,platform:'node',format:'cjs',
+  plugins:[{name:'scanner-test-mocks',setup(b){
+    b.onResolve({filter:/^electron$|(?:local-ai-policy|local-vision|llm-gateway|user-profile|platform|consciousness-service|ollama-service|mac-game-context|agent-manager|window-manager)$/},()=>({path:mock('scanner-mocks.ts')}))
+  }}]
+})
+execFileSync(process.execPath,['--test','work/scanner-tests.cjs'],{stdio:'inherit'})

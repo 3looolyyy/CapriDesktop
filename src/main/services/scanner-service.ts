@@ -1,10 +1,11 @@
+import { macGameContext } from './mac-game-context'
 import { localAIEnabled } from './local-ai-policy'
 import { localVisionModels, describeLocalImage } from './local-vision'
 import { scannerVisionMode, captureCrop } from '../../shared/platform-policy'
 import { llmFetch, isCloudMode, cloudVisionModel, describeCloudImage } from './llm-gateway'
 import { llmBody } from './user-profile'
 import { isMac } from './platform'
-import { desktopCapturer, screen, systemPreferences } from 'electron'
+import { desktopCapturer, screen, systemPreferences, powerMonitor } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { windowManager } from '../windows/window-manager'
@@ -23,6 +24,10 @@ export class ScannerService {
   private isContinuous = false
   private continuousTimer: NodeJS.Timeout | null = null
   private lastScanTime = 0
+  private screenLocked = false
+  private initialized = false
+  private continuousGeneration = 0
+  private liveScanController: AbortController | null = null
   private lastSampleBuffer: Buffer | null = null
 
   public static getInstance(): ScannerService {
@@ -33,6 +38,15 @@ export class ScannerService {
   }
 
   public init(): void {
+    if (!this.initialized) {
+      this.initialized = true
+      const pause = () => { this.screenLocked = true; this.setContinuous(false) }
+      const resume = () => { this.screenLocked = false }
+      powerMonitor.on('lock-screen', pause)
+      powerMonitor.on('suspend', pause)
+      powerMonitor.on('unlock-screen', resume)
+      powerMonitor.on('resume', resume)
+    }
     this.isContinuous = consciousnessService.getScannerContinuous() && !(isMac && isCloudMode())
     if (isMac && isCloudMode()) consciousnessService.setScannerContinuous(false)
     if (this.isContinuous) {
@@ -71,6 +85,7 @@ export class ScannerService {
   public close(): boolean {
     windowManager.hideScanner()
     this.stopContinuousLoop()
+    if (isMac && isCloudMode()) this.setContinuous(false)
     this.broadcastStatus()
     return true
   }
@@ -84,9 +99,12 @@ export class ScannerService {
   }
 
   public setContinuous(enabled: boolean): boolean {
-    if (isMac && isCloudMode()) enabled=false
+    this.continuousGeneration++
+    if (!enabled) this.liveScanController?.abort()
+    if (enabled && !this.isContinuous) { this.lastSampleBuffer=null; this.lastScanTime=0 }
+    if (enabled && isMac && systemPreferences.getMediaAccessStatus('screen')!=='granted') throw new Error('Allow Screen Recording in Mac settings, then restart Capri.')
     this.isContinuous = enabled
-    consciousnessService.setScannerContinuous(enabled)
+    consciousnessService.setScannerContinuous(isMac && isCloudMode() ? false : enabled)
     if (enabled && this.getStatus().isOpen) {
       this.startContinuousLoop()
     } else {
@@ -110,7 +128,7 @@ export class ScannerService {
    * Excludes the frame overlay by momentarily making it invisible, applies DPI scaling,
    * crops to exact bounds, resizes to max 1024px side, and returns in-memory base64 JPEG.
    */
-  public async captureRegionBase64(fullScreen = false): Promise<{ base64: string; width: number; height: number; rawBuffer: Buffer; bitmap: Buffer } | null> {
+  public async captureRegionBase64(fullScreen = false, displayPoint?: {x:number;y:number}): Promise<{ base64: string; width: number; height: number; rawBuffer: Buffer; bitmap: Buffer } | null> {
     const win = windowManager.getScannerWindow()
     if (!fullScreen && (!win || win.isDestroyed() || !win.isVisible())) {
       return null
@@ -131,7 +149,7 @@ export class ScannerService {
     let cropH = Math.max(80, bounds.height - borderTop - borderBottom)
 
     const centerPoint = { x: cropX + Math.round(cropW / 2), y: cropY + Math.round(cropH / 2) }
-    const currentDisplay = screen.getDisplayNearestPoint(fullScreen ? screen.getCursorScreenPoint() : centerPoint)
+    const currentDisplay = screen.getDisplayNearestPoint(fullScreen ? displayPoint || screen.getCursorScreenPoint() : centerPoint)
     if (fullScreen) { cropX=currentDisplay.bounds.x; cropY=currentDisplay.bounds.y; cropW=currentDisplay.bounds.width; cropH=currentDisplay.bounds.height }
     const scale = currentDisplay.scaleFactor || 1
     if (isMac && (cropX < currentDisplay.bounds.x || cropY < currentDisplay.bounds.y || cropX + cropW > currentDisplay.bounds.x + currentDisplay.bounds.width || cropY + cropH > currentDisplay.bounds.y + currentDisplay.bounds.height)) throw new Error('Keep the scanner capture region entirely on one display.')
@@ -318,17 +336,20 @@ export class ScannerService {
   /**
    * Main scan function: Captures region, calls multimodal model, triggers audio & HUD feedback
    */
-  public async scan(userPrompt?: string, fullScreen = false): Promise<ScannerScanResult> {
+  public async scan(userPrompt?: string, fullScreen = false, liveGeneration?: number): Promise<ScannerScanResult> {
+    if (this.screenLocked || (liveGeneration!==undefined && liveGeneration!==this.continuousGeneration)) return {success:false,error:'Scan stopped.'}
     if (this.isScanning) {
       return { success: false, error: 'A scan is already in progress' }
     }
 
     const win = windowManager.getScannerWindow()
-    if (!win || win.isDestroyed() || !win.isVisible()) {
+    if (!fullScreen && (!win || win.isDestroyed() || !win.isVisible())) {
       this.open()
       await new Promise((r) => setTimeout(r, 200))
     }
 
+    const controller=liveGeneration!==undefined ? new AbortController() : null
+    this.liveScanController=controller
     this.isScanning = true
     this.lastScanTime = Date.now()
 
@@ -352,6 +373,7 @@ export class ScannerService {
         throw new Error(isEs ? 'No se pudo capturar la región del marco.' : 'Could not capture region inside frame.')
       }
 
+      if (this.screenLocked || (liveGeneration!==undefined && liveGeneration!==this.continuousGeneration)) return {success:false,error:'Scan stopped.'}
       this.lastSampleBuffer = capture.rawBuffer
 
       let visionModel=cloudVisionModel()
@@ -372,7 +394,7 @@ Describe exactly what is shown:
 
       console.log(`[ScannerService] Stage 1: Calling vision model ${visionModel}...`)
       const visualDescription = visionMode === 'cloud'
-        ? await describeCloudImage(capture.base64,userPrompt || 'Describe the visible apps, objects and relevant readable text in this screen region briefly.')
+        ? await describeCloudImage(capture.base64,`${macGameContext.prompt()} Reply in ${consciousnessService.getPreferredLanguage()}. ${userPrompt ? `Your partner asks: ${JSON.stringify(userPrompt)}. Answer directly with your own personality using visible evidence.` : 'React to what your partner is showing you as their playful co-pilot, not as an image-captioning assistant. One or two short sentences; name the game if clearly visible, and do not invent events.'}`,controller?.signal)
         : await describeLocalImage(visionModel,capture.base64,visionPrompt,isMac)
       console.log(`[ScannerService] Stage 1 Visual Description: "${visualDescription}"`)
 
@@ -517,6 +539,8 @@ Return ONLY valid JSON:
 
       const parsedResult = this.parseVisionOutput(rawContent, isEs)
 
+      if (this.screenLocked || (liveGeneration!==undefined && liveGeneration!==this.continuousGeneration)) return {success:false,error:'Scan stopped.'}
+
       // Save to consciousness service so Capri can hold conversations and remember what was shown
       consciousnessService.setLastScannedContext({
         summary: parsedResult.summary || 'Screen content',
@@ -559,6 +583,7 @@ Return ONLY valid JSON:
 
       return parsedResult
     } catch (err: any) {
+      if (liveGeneration!==undefined && (liveGeneration!==this.continuousGeneration || this.screenLocked)) return {success:false,error:'Live Scan stopped.'}
       console.error('[ScannerService] Scan error:', err)
       const isTimeout = err?.name === 'TimeoutError' || err?.message?.toLowerCase().includes('timeout')
       const errMessage = isTimeout
@@ -568,9 +593,12 @@ Return ONLY valid JSON:
         : (isEs
             ? `Glitcheo en el escáner óptico: ${err?.message || err}. ¡Reintentá en un instante, choomba!`
             : `Optical scanner glitch: ${err?.message || err}. Try again in a flash, choomba!`)
+      if (this.isContinuous) this.setContinuous(false)
       this.finishScanError(errMessage)
       return { success: false, error: err?.message || String(err), response: errMessage }
     } finally {
+      if (this.liveScanController===controller) this.liveScanController=null
+      if ((this.screenLocked || (liveGeneration!==undefined && liveGeneration!==this.continuousGeneration)) && agentManager.getCompanionState()==='thinking' && !agentManager.getStatus().isRunning) agentManager.setCompanionState('standing')
       this.isScanning = false
       this.broadcastStatus()
     }
@@ -844,7 +872,6 @@ Analyze the drawing, logo, emblem, symbol, or illustration inside this frame car
 
   // --- Continuous Scan Loop ---
   private startContinuousLoop(): void {
-    if (isMac && isCloudMode()) { this.stopContinuousLoop(); this.isContinuous=false; return }
     if (this.continuousTimer) return
     this.continuousTimer = setInterval(() => {
       this.tickContinuous()
@@ -859,17 +886,18 @@ Analyze the drawing, logo, emblem, symbol, or illustration inside this frame car
   }
 
   private async tickContinuous(): Promise<void> {
-    if (isMac && isCloudMode()) { this.setContinuous(false); return }
-    if (!this.isContinuous || this.isScanning) return
+    if (!this.isContinuous || this.isScanning || this.screenLocked) return
     const win = windowManager.getScannerWindow()
     if (!win || win.isDestroyed() || !win.isVisible()) return
 
     // Cooldown check: at least 9 seconds between consecutive autonomous scans
-    if (Date.now() - this.lastScanTime < 9000) return
+    if (Date.now() - this.lastScanTime < (isMac && isCloudMode() ? 60000 : 9000)) return
+    if (['thinking','talking','sleep'].includes(agentManager.getCompanionState())) return
 
+    const generation=this.continuousGeneration
     try {
       const capture = await this.captureRegionBase64()
-      if (!capture || !capture.rawBuffer) return
+      if (!capture || !capture.rawBuffer || generation!==this.continuousGeneration || !this.isContinuous || this.screenLocked) return
 
       if (this.lastSampleBuffer) {
         const diffRatio = this.calculateBufferDiff(this.lastSampleBuffer, capture.rawBuffer)
@@ -877,13 +905,14 @@ Analyze the drawing, logo, emblem, symbol, or illustration inside this frame car
         if (diffRatio > 0.18) {
           const prefLang = consciousnessService.getPreferredLanguage()
           const prompt = prefLang === 'es' ? 'Contenido actualizado en el marco' : 'Updated content inside frame'
-          await this.scan(prompt)
+          await this.scan(prompt,false,generation)
         }
       } else {
-        this.lastSampleBuffer = capture.rawBuffer
+        await this.scan(undefined,false,generation)
       }
     } catch {
-      // Quiet fail on continuous sample
+      this.setContinuous(false)
+      // Stop on revoked permissions instead of retrying forever.
     }
   }
 

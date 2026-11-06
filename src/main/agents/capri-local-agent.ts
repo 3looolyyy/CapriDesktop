@@ -1,6 +1,7 @@
 import { parseMacSystemCommand, isMacSystemRequest } from '../../shared/mac-system-commands'
 import { runMacSystemCommand } from '../services/mac-system-service'
 import { deviceClockAnswer, deviceClockContext } from '../../shared/device-clock'
+import { macGameContext } from '../services/mac-game-context'
 import { CAPRI_CHAT_STYLE } from '../../shared/capri-style'
 import { isScreenQuestion } from '../services/local-vision'
 import { isUsageQuestion, macUsageSummary } from '../services/mac-usage'
@@ -1460,7 +1461,7 @@ export class CapriLocalAgent extends EventEmitter {
       : `\nACTIVE SCREEN CONTEXT: No active video, music, or browser page detected on screen.`
 
     const lastScan = consciousnessService.getLastScannedContext()
-    const lastScanContext = lastScan
+    const lastScanContext = lastScan && (!isMac || Date.now()-lastScan.timestamp < 5*60*1000)
       ? `\nRECENT OPTICAL SCANNER OBSERVATION: A moment ago, {name} showed you through your Optical Scanner frame:
 - What was visible: "${lastScan.summary}"
 - Features: ${lastScan.tags.join(', ')}
@@ -1523,7 +1524,7 @@ ROLES & IDENTITIES (CRITICAL - NEVER CONFUSE OR INVERT):
 - USER: The user is {name}. Call them {name}, choomba, boo, or cupcake. The user is a human edgerunner and host sharing this CPU. THE USER IS NOT CAPRI!
 - When the user asks "what's my name?" or "who am I?": Answer that they are {name} (choomba), your human host sharing this CPU!
 - When the user asks "who are you?" or "what's your name?": Answer: "I'm Capri! Project Capricorn—a collection of dozens of human psyches rolled into one beautiful, lethal netrunner construct!"
-${isMac ? deviceClockContext() + ' For routine actions, give one brief factual result; a natural choom or nova is welcome. Avoid repeated breaching/launch slogans and unsupported claims. Do not announce an action before it finishes. PLATFORM: macOS on Apple Silicon. Use macOS paths and commands. When asked to set or change system sound, execute mac_system and report its verified result; you are not limited to reading volume. Built-in Mac commands support system volume/mute, battery, disk space, OS info, common folders and settings pages. Do not claim to change Wi-Fi, Bluetooth, permissions or execute arbitrary system shell commands from chat; open the relevant settings page instead. Paint drawing, ShadowPlay, League/Cyberpunk integration and shell-command voice macros are unavailable; say so clearly when requested. Spotify uses the selected Mac provider; trust its error messages and never claim playback succeeded when a tool failed.' : ''}
+${isMac ? macGameContext.prompt() + deviceClockContext() + ' For routine actions, give one brief factual result; a natural choom or nova is welcome. Avoid repeated breaching/launch slogans and unsupported claims. Do not announce an action before it finishes. PLATFORM: macOS on Apple Silicon. Use macOS paths and commands. When asked to set or change system sound, execute mac_system and report its verified result; you are not limited to reading volume. Built-in Mac commands support system volume/mute, battery, disk space, OS info, common folders and settings pages. Do not claim to change Wi-Fi, Bluetooth, permissions or execute arbitrary system shell commands from chat; open the relevant settings page instead. Paint drawing, ShadowPlay, League/Cyberpunk integration and shell-command voice macros are unavailable; say so clearly when requested. Spotify uses the selected Mac provider; trust its error messages and never claim playback succeeded when a tool failed.' : ''}
 - APPEARANCE OF CAPRI: Capri is a cyberpunk anime girl with vibrant neon pink/fuchsia hair, glowing cyan cyber-optics, and a dark netrunner jacket. {name} is a human companion sitting at the PC. {name} does NOT have pink hair!
 - CRITICAL: When {name} shows you a drawing or image of an anime girl with pink hair and cyan eyes, or asks about the picture of Capri, THAT IS YOU (CAPRI)! NEVER claim the drawing is of {name}! Express genuine hype, affection, and pride in how awesome you look!
 
@@ -1662,7 +1663,7 @@ LANGUAGE RULE: ${langDirective}`
 
         const allowTools = offerDesktopTools(process.platform, model, prompt)
         const messages = isMac && !allowTools
-          ? [{role:'system',content:`${CAPRI_CHAT_STYLE} ${deviceClockContext()} Platform: macOS on Apple Silicon. You have native commands for system volume/mute, battery, disk, OS info, folders/settings, app launching/quitting and Spotify. You are not limited to reporting volume. You can perform supported actions when explicitly requested, but never claim success without an actual tool result. Your onscreen avatar can be dragged and deliberately shaken for a glitch reaction. These capabilities do not mean unrestricted control of every app or permission. The user's name is ${getUserName()}. Answer their question directly, clearly and briefly using your general knowledge. Correct obvious spelling mistakes when interpreting the question. Historical facts do not require live browser access. If you genuinely do not know, say so plainly. Do not claim to have searched or verified anything. Do not open apps, use tools, suggest a web search, or ask whether to open a browser unless the user explicitly asks for that action. Keep your Cyberpunk personality, but avoid repeating the same catchphrase or mentioning your knowledge base. ${langDirective}`}, ...this.conversationHistory.slice(1)]
+          ? [{role:'system',content:`${CAPRI_CHAT_STYLE} ${macGameContext.prompt()} ${lastScanContext} ${voiceActingRules} ${lookRules} ${deviceClockContext()} Platform: macOS on Apple Silicon. You have native commands for system volume/mute, battery, disk, OS info, folders/settings, app launching/quitting and Spotify. You are not limited to reporting volume. You can perform supported actions when explicitly requested, but never claim success without an actual tool result. Your onscreen avatar can be dragged and deliberately shaken for a glitch reaction. These capabilities do not mean unrestricted control of every app or permission. The user's name is ${getUserName()}. Answer their question directly, clearly and briefly using your general knowledge. Correct obvious spelling mistakes when interpreting the question. Historical facts do not require live browser access. If you genuinely do not know, say so plainly. Do not claim to have searched or verified anything. Do not open apps, use tools, suggest a web search, or ask whether to open a browser unless the user explicitly asks for that action. Keep your Cyberpunk personality, but avoid repeating the same catchphrase or mentioning your knowledge base. ${langDirective}`}, ...this.conversationHistory.slice(1)]
           : this.conversationHistory
 
         const requestPayload: Record<string, unknown> = {

@@ -54,6 +54,12 @@ Manual vision: ask what is on screen or use Scan. Cloud vision sends the request
 
 Automatic comments: Mac settings → Screen comments → enter 1–120 whole minutes → Save interval. **0 means off**, the default. When enabled, screenshots of the display under your pointer are sent to cloud vision. Comments pause while locked/suspended or Capri is busy; errors disable the schedule. Responses aim to be short, friendly Cyberpunk remarks and skip private/settings screens. This is model-guided behavior, not a guarantee of private-content detection.
 
+Live Scan: open the scanner and click **Live off**. Cloud mode asks before enabling uploads, sends changed frame contents at most once per minute, and stays off after restarting. Closing the scanner, locking/suspending the Mac, changing AI settings or a scan error stops cloud Live Scan.
+
+Game comments: right-click Capri → **Game screen comments**, or open **Mac settings** and set its separate interval. This is off by default; enabling it uploads screenshots while a recognized game is foreground. Detection supports Steam game paths, native macOS Roblox, and ULTRAKILL, including common Wine/CrossOver process names. When window bounds are available, capture follows the game's display. Game identity adds context but does not supply live telemetry. A zero game interval leaves the ordinary screen-comment schedule unchanged.
+
+The Mac right-click menu works in desktop and game mode and opens the same full-size settings as the main app. Hold Command or Control over the game overlay to interact. Non-activating panels reduce application focus changes, but some exclusive-fullscreen games still minimize when another window needs keyboard focus. Use voice during fullscreen play, or borderless/windowed mode for text chat. Returning from settings preserves game mode and its position. On Mac, the framed eyes remain visible while thinking/speaking and when switching to other apps; game mode stays on until you turn it off.
+
 Spotify defaults to Desktop app: install/sign into Spotify, grant Accessibility and Automation. Search selects the closest supported track result and verifies playback. Web API mode requires your own Spotify developer client ID, PKCE sign-in, eligible account and Premium for playback. Redirect URI: `http://127.0.0.1:43829/callback`. Capri does not silently switch providers.
 
 ## Data, updates and limitations
@@ -64,7 +70,7 @@ Mac update checks open the upstream release page for manual updates. This person
 
 Supported macros: apps, URLs, music/media controls, ordinary companion game mode, speech and waits. Shell-command macros, Paint drawing, ShadowPlay and League/Cyberpunk integrations are unavailable on Mac. Windows/Linux runtime behavior remains untested.
 
-Validation: 47 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
+Validation: 54 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
 
 ## Native Mac compatibility update (1.0.12)
 
@@ -72,7 +78,7 @@ Current local time/date/day questions are answered from the device clock, includ
 
 Explicit Chrome, Firefox, Safari, Edge, Brave and Opera requests open the named installed browser; a query opens in that browser. Missing apps return a failure. Explorer/File Explorer resolves to Finder, Task Manager to Activity Monitor, Control Panel to System Settings, Notepad to TextEdit and calc to Calculator. Apps are asked to quit normally, allowing save prompts. The coding terminal uses a Unix shell on Mac.
 
-Validation: 47 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
+Validation: 54 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
 
 ## Upstream 1.0.4 / Mac revision 13
 

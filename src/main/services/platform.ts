@@ -293,6 +293,7 @@ export const LINUX_EDITORS = ['gnome-text-editor', 'gedit', 'kate', 'kwrite', 'm
 // Windows (X11 / XWayland)
 
 export interface ForegroundWindow {
+  bounds?: { x:number; y:number; width:number; height:number }
   title: string
   process: string
   path: string

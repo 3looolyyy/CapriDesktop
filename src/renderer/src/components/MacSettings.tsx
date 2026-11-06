@@ -33,6 +33,7 @@ export const MacSettings: React.FC = () => {
   const [speechLog,setSpeechLog]=useState('')
   const speechSetupRef=useRef(false)
   const [minutes,setMinutes]=useState(0)
+  const [gameMinutes,setGameMinutes]=useState(0)
   const [query, setQuery] = useState('')
   const [desktop,setDesktop]=useState<DesktopPreferences|null>(null)
   const [position,setPosition]=useState<PlacementCommand>('bottom')
@@ -41,6 +42,7 @@ export const MacSettings: React.FC = () => {
     const prefs=await window.api.desktop.preferences()
     setDesktop(prefs)
     setMinutes(prefs.screenCommentMinutes)
+    setGameMinutes(prefs.gameCommentMinutes)
     const s = await window.api.spotify.settings()
     setSpotify(s)
     setClientId(s.clientId)
@@ -138,6 +140,12 @@ export const MacSettings: React.FC = () => {
         <label className="flex flex-wrap items-center gap-2 text-sm">Every
           <input aria-label="Screen comment interval in minutes" type="number" min="0" max="120" step="1" value={minutes} onChange={e=>setMinutes(Number(e.target.value))} className="cp-input w-20 p-2 bg-[#170a0b]" /> minutes (0 = off)
           <button disabled={busy || !Number.isInteger(minutes) || minutes<0 || minutes>120} className={btn} onClick={()=>run(async()=>{setDesktop(await window.api.desktop.configure({screenCommentMinutes:minutes}));setMessage(minutes ? `Automatic cloud screen comments enabled every ${minutes} minute(s).` : 'Automatic screen comments off.')})}>Save interval</button>
+        </label>
+        <h3 className="font-semibold">Game screen comments</h3>
+        <p className="text-xs">When a supported foreground game is detected, use this interval instead. Off by default; enabling it sends screenshots to your cloud vision provider. Capri knows the detected game name and reacts to visible play, without game telemetry. Voice works during fullscreen games; text chat may switch focus away. Borderless/windowed mode is recommended for typing.</p>
+        <label className="flex flex-wrap items-center gap-2 text-sm">Every
+          <input aria-label="Game comment interval in minutes" type="number" min="0" max="120" step="1" value={gameMinutes} onChange={e=>setGameMinutes(Number(e.target.value))} className="cp-input w-20 p-2 bg-[#170a0b]" /> minutes (0 = off)
+          <button disabled={busy || !Number.isInteger(gameMinutes) || gameMinutes<0 || gameMinutes>120} className={btn} onClick={()=>run(async()=>{setDesktop(await window.api.desktop.configure({gameCommentMinutes:gameMinutes}));setMessage(gameMinutes ? `Game screen comments enabled every ${gameMinutes} minute(s).` : 'Game screen comments off.')})}>Save game interval</button>
         </label>
       </div>
       <p className="text-sm text-[var(--cp-muted)]">
