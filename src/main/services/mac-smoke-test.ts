@@ -97,7 +97,7 @@ export async function runMacSmokeTest(reportFile: string): Promise<void> {
     await check('mac-settings-ui', async () => {
       const deck = windowManager.getDeckWindow()!
       await deck.webContents.executeJavaScript(
-        `Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Mac & Spotify')?.click()`,
+        `Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Settings')?.click()`,
       )
       let text = ''
       for (let i = 0; i < 20; i++) {

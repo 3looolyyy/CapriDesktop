@@ -66,7 +66,7 @@ export function registerIpcHandlers(): void {
       { label: 'Scanner · ⌘⌥S', click: () => scannerService.toggle() },
       { type: 'separator' },
       { label: 'Voice & companion settings…', click: () => openSettings(true) },
-      { label: 'Mac settings…', click: () => openSettings() },
+      { label: 'Settings…', click: () => openSettings() },
       { label: 'Open main app', click: () => windowManager.showDeck() }
     ]).popup({ window: win })
   })

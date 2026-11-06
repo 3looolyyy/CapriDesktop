@@ -234,7 +234,7 @@ export const LlmProviderForm = forwardRef<LlmProviderFormHandle, { onProviderCha
 
             <label className="block text-sm">Vision model
               <input aria-label="Cloud vision model" className={`${field} cp-mono mt-1`} value={visionModel} onChange={e=>setVisionModel(e.target.value)} placeholder="Image-capable model ID" />
-              <span className="block text-xs mt-1">Uses this cloud server and API key. Only an explicit scan sends the selected screen image; continuous cloud scanning is disabled. Chat keeps its own model.</span>
+              <span className="block text-xs mt-1">Uses this cloud server and API key. Manual scans send the selected screen image. Live Scan and automatic screen comments send images only after you enable them. Chat keeps its own model.</span>
             </label>
 
             <div className="flex items-center gap-3">
