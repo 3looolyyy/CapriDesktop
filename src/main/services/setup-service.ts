@@ -177,7 +177,9 @@ export class SetupService {
   /** Ollama starts with Windows on its own, so it has to be told too or it fills the old disk */
   private async pointOllamaAtStorage(): Promise<void> {
     const models = ollamaModelsDir()
-    if (!isWindows || !models || process.env.OLLAMA_MODELS === models) return
+    // Her own environment says nothing about the Ollama that's running: its installer starts one by
+    // itself. Only one she started knows for sure where it's keeping models
+    if (!isWindows || !models || ollamaService.servingModelsDir() === models) return
     fs.mkdirSync(models, { recursive: true })
     process.env.OLLAMA_MODELS = models
     await quick('setx', ['OLLAMA_MODELS', models])
