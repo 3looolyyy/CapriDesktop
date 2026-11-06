@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-export const app = { getPath: () => process.env.CAPRI_TEST_DATA!, getAppPath: () => process.cwd(), isPackaged: false }
+export const app = { getPath: () => process.env.CAPRI_TEST_DATA!, getAppPath: () => process.cwd(), isPackaged: false, getVersion:()=> '1.0.4-mac.13' }
 export const safeStorage = {
   isEncryptionAvailable: () => true,
   encryptString: (s: string) => Buffer.from(`test-only:${s}`),
@@ -7,6 +7,7 @@ export const safeStorage = {
 }
 export const opened: string[] = []
 export const shell = {
+  openPath: async (file:string)=>{opened.push(file);return ''},
   openExternal: async (url: string) => {
     opened.push(url)
   },

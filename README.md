@@ -1,6 +1,6 @@
 # Capri Desktop
 
-**Apple Silicon macOS port:** see [MACOS.md](MACOS.md) for installation, voice setup, all Mac shortcuts and limitations. Open settings with **⌘,**. If an update breaks Screen Recording or Accessibility (called **Device Control and Data Access** on some macOS versions), remove the old Capri entry in System Settings → Privacy & Security, fully quit Capri, re-add and enable the installed app, then restart Capri. See the detailed permission-repair steps in MACOS.md. The upstream documentation below describes the original Windows/Linux release.
+**Apple Silicon macOS port (upstream 1.0.4 / Mac revision 13):** see [MACOS.md](MACOS.md) for installation, voice setup, all Mac shortcuts and limitations. Open settings with **⌘,**. If an update breaks Screen Recording or Accessibility (called **Device Control and Data Access** on some macOS versions), remove the old Capri entry in System Settings → Privacy & Security, fully quit Capri, re-add and enable the installed app, then restart Capri. See the detailed permission-repair steps in MACOS.md. The upstream documentation below describes the original Windows/Linux release.
 
 <p align="center">
   <img src="src/renderer/src/assets/capri/walking/walking.gif" alt="Capri walking" width="260">
@@ -198,7 +198,7 @@ Capri understands commands in both English and Spanish.
 | Hold `Ctrl` in Game Mode | In Game Mode Capri lets clicks pass through to the game; hold `Ctrl` over her to move or touch her. |
 | `Ctrl+Alt+G` in Game Mode (Linux) | Same as holding `Ctrl`, which Linux can't detect in that mode. |
 
-> **Note:** arrow hotkeys are global: while Capri is running, those arrows are reserved for her in every application.
+> **Note:** while another app has the focus, those arrows are reserved for her. You can change those keys or turn them off in the voice settings; `Ctrl+Alt+V` always works. In her own windows the arrows work normally in text fields.
 
 ### Mouse
 | Action | What it does |
@@ -214,7 +214,8 @@ Capri understands commands in both English and Spanish.
 | `show me your red eye` / `mostrame tu ojo rojo` | Changes her look. Also `your eye` / `tu ojo` and `your big eyes` / `tus ojos`. |
 | `why did you pick that?` / `¿por qué elegiste eso?` | She answers about what she just said or did on her own. |
 | `what's new?` / `¿qué hay de nuevo?` | Reads the notes of this version. |
-| `update yourself` / `actualizate` | Looks for a new version. |
+| `what version are you on?` / `¿en qué versión estás?` | Tells you her version. |
+| `update yourself` / `actualizate` | Looks for a new version and installs it. A `.deb` asks for your password. |
 | `clip that` / `clipeá eso` | Saves the last moments of your game with ShadowPlay (`F8`). |
 | `are you bored?` / `¿estás aburrida?` | She finds something to do: music, a video or a search. |
 
@@ -259,6 +260,7 @@ The drawing, League of Legends and Cyberpunk 2077 commands are in [section 8](#8
 | `open league of legends` / `abrí el lol` | Starts the Riot client / League of Legends. |
 | `open cyberpunk` | Launches Cyberpunk 2077 through Steam or GOG. |
 | `open steam` / `open discord` / `open obs` | Launches Steam, Discord or OBS Studio. |
+| `open blender` / `abrí la epic games store` | Opens any installed app. If she can't find it, she asks you where it is and remembers it. |
 | `close league` / `close chrome` / `cerrá discord` | Closes the process. |
 
 ### Desktop interaction
@@ -266,6 +268,8 @@ The drawing, League of Legends and Cyberpunk 2077 commands are in [section 8](#8
 | :--- | :--- |
 | `sit on tabs` / `sentate en la pestaña` | Capri perches on your browser tabs. |
 | `sit on the desktop` / `sentate en el escritorio` | She goes back to the desktop. |
+| `stay still` / `quedate quieta` | She stays where she is until you move her. |
+| `you can move` / `podés moverte` | She goes back to wandering around. |
 | `what are you doing?` | She tells you how she feels and what she's up to. |
 
 ---
@@ -391,6 +395,7 @@ Components can be installed later; features that depend on them (voice, local AI
 
 1. Download the `.deb` from **Releases**. It works on Debian-based distros (Debian, Ubuntu, Mint, Kali).
 2. Install it with its helpers: `sudo apt install ./CapriDesktop-x.y.z.deb python3-venv zstd xdotool wmctrl playerctl`.
+   On other distributions, extract the `.tar.gz` and run `capridesktop`, with the same helpers from your package manager.
 3. Open Capri and follow the same first-run wizard. Use an X11 session.
 
 Paint drawing isn't available on Linux. Everything that differs from Windows is listed in [REQUIREMENTS.md](REQUIREMENTS.md#13-linux).
@@ -403,6 +408,20 @@ Paint drawing isn't available on Linux. Everything that differs from Windows is 
 - **Spotify Desktop (optional)**: native media control.
 - **Cyber Engine Tweaks (optional)**: live Cyberpunk 2077 telemetry, together with Capri's mod. See [Installing the Cyberpunk 2077 mod](#installing-the-cyberpunk-2077-mod).
 - **Fish Audio / ElevenLabs (optional)**: API key in `voice_config.local.json` (see `voice_config.example.json`).
+
+### Choosing a disk
+
+If you install her on a disk other than the system's, her requirements go there too, in a `CapriData` folder: Python, the voice environment, Whisper, FFmpeg, Ollama and its models. Models you already have stay where they are. You can pick another folder in the first-run setup, under **Where to install**.
+
+If she's already installed, the same option moves everything to the new folder: it shows what's moving and how much it weighs, copies it, and only deletes the old files at the end. Python stays where it is, and the Ollama program is downloaded again by its own installer. To move Capri herself, run her installer again and pick another folder.
+
+### If she doesn't hear you
+
+Open the voice settings and press **Test** next to the microphone: it records a few seconds and shows what she understood.
+
+- **No sound coming in:** pick another microphone in the same place, or check that the system isn't blocking it.
+- **Sound, but no words:** run the setup again from the model settings. Her hearing may be incomplete.
+- **The first time** she also downloads her hearing, about 500 MB, and tells you while it's loading.
 
 ### Uninstalling
 

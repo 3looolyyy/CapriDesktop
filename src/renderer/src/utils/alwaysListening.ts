@@ -3,6 +3,7 @@
  * (with 0.5 s of pre-roll) is encoded as 16 kHz mono WAV and passed to onUtterance.
  */
 
+import { openMicrophone, openDefaultMicrophone } from './microphone'
 export interface AlwaysListenerOptions {
   onUtterance: (wav: ArrayBuffer) => void
   /** While true (Capri speaking, push-to-talk, agent busy) audio is ignored */
@@ -40,12 +41,9 @@ export class AlwaysListener {
 
   public async start(): Promise<void> {
     if (this.stream) return
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      // Microphone input only; never request display/system audio. Mac explicitly follows
-      // the default input instead of a previously selected browser capture device.
-      audio: { ...(/Mac/i.test(navigator.platform) ? {deviceId: 'default'} : {}), echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-      video: false
-    })
+    this.stream = /Mac/i.test(navigator.platform)
+      ? await openDefaultMicrophone({echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1})
+      : await openMicrophone({echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1})
     try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
     this.ctx = new AudioCtx()

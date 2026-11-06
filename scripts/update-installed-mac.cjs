@@ -14,8 +14,11 @@ async function update() {
   const backup=path.resolve('work/installed-app-backup/Capri Desktop.app')
   fs.mkdirSync(path.dirname(backup),{recursive:true})
   execFileSync('/usr/bin/ditto',[target,backup])
-  for (const relative of ['Contents/Resources/app.asar','Contents/Resources/scripts/capri_voice.py','Contents/Resources/scripts/macos/bin/capri-desktop','Contents/Info.plist']) {
+  for (const relative of ['Contents/Resources/app.asar','Contents/Info.plist']) {
     fs.copyFileSync(path.join(source,relative),path.join(target,relative))
+  }
+  for(const relative of ['Contents/Resources/scripts','Contents/Resources/scripts-capri']) {
+    fs.cpSync(path.join(source,relative),path.join(target,relative),{recursive:true,force:true})
   }
   await sign({electronPlatformName:'darwin',appOutDir:path.dirname(target),packager:{appInfo:{productFilename:'Capri Desktop'}}})
   console.log('Existing app updated. Executable, application path and user data preserved. Backup:',backup)

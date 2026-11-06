@@ -2,6 +2,7 @@ import type { DesktopPreferences } from '../shared/mac-types'
 import type { PlacementCommand } from '../shared/placement'
 import type { LlmPublicSettings, LlmSettingsUpdate } from '../main/services/llm-gateway'
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import type { HotkeyAction, HotkeyProblem, Hotkeys } from '../shared/hotkeys'
 import {
   IPC_CHANNELS,
   CompanionEmotionState,
@@ -138,6 +139,9 @@ const api = {
     scriptLineDone: (id: number): void => ipcRenderer.send(IPC_CHANNELS.COMPANION_SCRIPT_LINE_DONE, id),
     cancelScript: (): void => ipcRenderer.send(IPC_CHANNELS.COMPANION_SCRIPT_CANCEL),
 
+    setHitThrough: (ignore: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_HIT_THROUGH, ignore),
+    listDisplays: (): Promise<{ id: number; label: string; width: number; height: number; primary: boolean; current: boolean }[]> => ipcRenderer.invoke(IPC_CHANNELS.DISPLAYS_LIST),
+    moveToDisplay: (id: number): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.DISPLAYS_MOVE, id),
     setClickThrough: (ignore: boolean): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_CLICK_THROUGH, ignore),
 
@@ -164,6 +168,18 @@ const api = {
       return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_TOGGLE_CHAT, sub)
     },
 
+    getGamingOpacity: (): Promise<number> => ipcRenderer.invoke(IPC_CHANNELS.GAMING_OPACITY_GET),
+
+    setGamingOpacity: (value: number): Promise<number> => ipcRenderer.invoke(IPC_CHANNELS.GAMING_OPACITY_SET, value),
+
+    onGamingOpacityChanged: (callback: (value: number) => void): (() => void) => {
+      const subscription = (_event: IpcRendererEvent, value: number): void => callback(value)
+      ipcRenderer.on(IPC_CHANNELS.GAMING_OPACITY_CHANGED, subscription)
+      return (): void => {
+        ipcRenderer.removeListener(IPC_CHANNELS.GAMING_OPACITY_CHANGED, subscription)
+      }
+    },
+
     onGamingModeChanged: (callback: (enabled: boolean) => void): (() => void) => {
       const subscription = (_event: IpcRendererEvent, enabled: boolean): void => callback(enabled)
       ipcRenderer.on(IPC_CHANNELS.COMPANION_GAMING_MODE_CHANGED, subscription)
@@ -186,6 +202,11 @@ const api = {
     }> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_CONSCIOUSNESS),
 
     getLanguage: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.COMPANION_GET_LANGUAGE),
+    onLineLanguage: (callback: (lang: string) => void): (() => void) => {
+      const sub = (_e: IpcRendererEvent, lang: string): void => callback(lang)
+      ipcRenderer.on(IPC_CHANNELS.COMPANION_LINE_LANGUAGE, sub)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.COMPANION_LINE_LANGUAGE, sub)
+    },
 
     setLanguage: (lang: string): Promise<string> =>
       ipcRenderer.invoke(IPC_CHANNELS.COMPANION_SET_LANGUAGE, lang),
@@ -297,7 +318,10 @@ const api = {
       return () => ipcRenderer.removeListener(IPC_CHANNELS.SETUP_LOG, sub)
     },
     finish: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_FINISH),
-    open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_OPEN)
+    open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_OPEN),
+    getStorage: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_GET_STORAGE),
+    chooseStorage: (reset?: boolean): Promise<any> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, reset),
+    moveStorage: (root: string | null): Promise<{ ok: boolean; root: string | null; status: any }> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_MOVE_STORAGE, root)
   },
 
   system: {
@@ -321,8 +345,22 @@ const api = {
 
   // Voice Core (Speech-to-Text & Text-to-Speech)
   voice: {
-    transcribe: (audioData: ArrayBuffer | Uint8Array): Promise<{ success: boolean; text?: string; error?: string }> =>
-      ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData),
+    transcribe: (audioData: ArrayBuffer | Uint8Array, partial?: boolean): Promise<{ success: boolean; text?: string; error?: string }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.VOICE_TRANSCRIBE, audioData, partial),
+    sttState: (): Promise<'off' | 'loading' | 'ready' | 'failed'> => ipcRenderer.invoke(IPC_CHANNELS.VOICE_STT_STATE),
+    getArrowKeys: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ARROW_KEYS_GET),
+    setArrowKeys: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ARROW_KEYS_SET, enabled),
+    getHotkeys: (): Promise<Hotkeys> => ipcRenderer.invoke(IPC_CHANNELS.HOTKEYS_GET),
+    setHotkey: (action: HotkeyAction, accelerator: string): Promise<{ hotkeys: Hotkeys; problem: HotkeyProblem | null }> =>
+      ipcRenderer.invoke(IPC_CHANNELS.HOTKEYS_SET, action, accelerator),
+    resetHotkeys: (): Promise<Hotkeys> => ipcRenderer.invoke(IPC_CHANNELS.HOTKEYS_RESET),
+    onHotkeysChanged: (callback: (hotkeys: Hotkeys) => void): (() => void) => {
+      const subscription = (_event: IpcRendererEvent, hotkeys: Hotkeys): void => callback(hotkeys)
+      ipcRenderer.on(IPC_CHANNELS.HOTKEYS_CHANGED, subscription)
+      return (): void => {
+        ipcRenderer.removeListener(IPC_CHANNELS.HOTKEYS_CHANGED, subscription)
+      }
+    },
 
     synthesize: (text: string, langOverride?: string): Promise<{ success: boolean; audioDataUrl?: string; error?: string }> =>
       ipcRenderer.invoke(IPC_CHANNELS.VOICE_SYNTHESIZE, text, langOverride),
@@ -372,6 +410,8 @@ const api = {
 
   // Autonomous Boredom
   boredom: {
+    getEnabled: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_GET_ENABLED),
+    setEnabled: (enabled: boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_SET_ENABLED, enabled),
     trigger: (category?: 'spotify' | 'youtube' | 'web_search'): Promise<boolean> =>
       ipcRenderer.invoke(IPC_CHANNELS.BOREDOM_TRIGGER, category)
   },

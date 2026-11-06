@@ -6,7 +6,7 @@ import { isMac } from './platform'
  */
 
 import { app } from 'electron'
-import { exec } from 'child_process'
+import { exec } from './hidden-process'
 import * as fs from 'fs'
 import * as path from 'path'
 import { agentManager } from '../agents/agent-manager'

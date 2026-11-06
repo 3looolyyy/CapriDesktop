@@ -8,11 +8,14 @@ import { SpeechBubble } from './SpeechBubble'
 import { useT } from '../utils/useUiLang'
 import { localizeLine } from '../../../shared/lines'
 import { getLineLanguage, setLineLanguage } from '../utils/lineLanguage'
+import { micErrorKind, micErrorLine, openMicrophone } from '../utils/microphone'
+import { voiceVolume } from '../utils/soundSettings'
 import { useCompanionStore, CompanionEmotionState } from '../stores/useCompanionStore'
 import { useAgentStore } from '../stores/useAgentStore'
 import dialogueBlipAudio from '../assets/dialogue_blip.wav'
 import patPatGif from '../assets/capri/pat-pat-pet-pet.gif'
 import { VoiceSettingsModal } from './VoiceSettingsModal'
+import { acceleratorFromEvent, DEFAULT_HOTKEYS, HOTKEY_ACTIONS } from '../../../shared/hotkeys'
 import {
   X,
   Mic,
@@ -38,6 +41,8 @@ export interface DesktopChatMessage {
 }
 
 const STORAGE_KEY = 'capri_desktop_chat_history'
+/** Loudest level in a recording below which the microphone isn't really sending anything */
+const MIN_MIC_LEVEL = 3
 
 // The view can mount twice (React's StrictMode, a reload of the window); she only says hello once
 let greeted = false
@@ -122,6 +127,41 @@ export const CompanionView: React.FC = () => {
   }, [])
   const [isWindowHovered, setIsWindowHovered] = useState(false)
   const [isGamingMode, setIsGamingMode] = useState<boolean>(false)
+  const [gamingOpacity, setGamingOpacity] = useState(1)
+
+  useEffect(() => {
+    window.api?.companion?.getGamingOpacity?.().then(setGamingOpacity).catch(() => {})
+    return window.api?.companion?.onGamingOpacityChanged?.(setGamingOpacity)
+  }, [])
+
+  // Her window is much wider than she is: only her body takes clicks, the rest goes to what's behind.
+  // Mouse moves keep arriving while it lets clicks through. On Linux they don't, so it stays as it was.
+  useEffect(() => {
+    if (isGamingMode || navigator.userAgent.includes('Linux') || !window.api?.companion?.setHitThrough) return
+    let ignoring = false
+    const set = (next: boolean) => {
+      if (next === ignoring) return
+      ignoring = next
+      window.api.companion.setHitThrough(next).catch(() => {})
+    }
+    const onMove = (e: MouseEvent) => {
+      const art = document.querySelector('[data-capri-art]')
+      const over = document.elementFromPoint(e.clientX, e.clientY)
+      if (e.buttons || !art || document.querySelector('.fixed.inset-0') || over?.closest('input,textarea,button,select,a,[data-capri-ui],.cp-frame')) {
+        set(false)
+        return
+      }
+      const box = art.getBoundingClientRect()
+      const half = (Math.min(box.width, box.height) * 0.72) / 2
+      const inside = Math.abs(e.clientX - (box.left + box.width / 2)) <= half && e.clientY >= box.top && e.clientY <= box.bottom
+      set(!inside)
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      set(false)
+    }
+  }, [isGamingMode])
 
   // Gaming Mode: Capri is click-through so she never steals clicks from the game.
   // Hold Ctrl over her to interact / drag her (mouse moves are forwarded even while click-through).
@@ -149,30 +189,6 @@ export const CompanionView: React.FC = () => {
       document.removeEventListener('mouseleave', onLeave)
     }
   }, [isGamingMode])
-  // Forward transparent Mac window space; keep the avatar and visible controls interactive.
-  useEffect(() => {
-    if(isGamingMode || !/Mac/i.test(navigator.platform)) return
-    let ignoring=false
-    const update=(want:boolean)=>{
-      if(ignoring===want) return
-      ignoring=want
-      window.api.companion.setClickThrough(want).catch(()=>{})
-    }
-    const move=(e:MouseEvent)=>{
-      if(e.buttons) return // keep a drag captured until mouse-up
-      const target=document.elementFromPoint(e.clientX,e.clientY)
-      const ui=target?.closest('button,input,textarea,select,[data-capri-ui],.cp-frame')
-      const avatar=target?.closest('[data-capri-avatar]')
-      const rect=avatar?.getBoundingClientRect()
-      const overAvatar=!!rect && Math.abs(e.clientX-(rect.left+rect.width/2))<=Math.min(120,rect.width/2)
-      update(!ui && !overAvatar)
-    }
-    const leave=(e:MouseEvent)=>{if(!e.buttons) update(true)}
-    window.addEventListener('mousemove',move)
-    document.addEventListener('mouseleave',leave)
-    update(true)
-    return ()=>{window.removeEventListener('mousemove',move);document.removeEventListener('mouseleave',leave);window.api.companion.setClickThrough(false).catch(()=>{})}
-  },[isGamingMode])
   const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState<boolean>(false)
   const [isContextMenuOpen, setIsContextMenuOpen] = useState<boolean>(false)
   const tr = useT()
@@ -201,8 +217,9 @@ export const CompanionView: React.FC = () => {
         setIsGamingMode(!!g)
       })
     }
-    if (window.api?.companion?.onLanguageChanged) {
-      const unsub = window.api.companion.onLanguageChanged((lang: string) => {
+    if (window.api?.companion?.onLineLanguage) {
+      // Her lines follow the language she's spoken to. Changing the settings also comes through here.
+      const unsub = window.api.companion.onLineLanguage((lang: string) => {
         const effective = lang || 'en'
         setCurrentLang(effective)
         currentLangRef.current = effective
@@ -427,20 +444,26 @@ export const CompanionView: React.FC = () => {
     return undefined
   }, [])
 
-  // In-app window keydown listener for ArrowDown (Flecha abajo)
+  // The same keys while one of her windows has the focus, where the global shortcuts are off
   useEffect(() => {
+    let hotkeys = DEFAULT_HOTKEYS
+    window.api?.voice?.getHotkeys?.().then((saved) => (hotkeys = saved)).catch(() => {})
+    const unsub = window.api?.voice?.onHotkeysChanged?.((saved) => (hotkeys = saved))
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        const target = e.target as HTMLElement | null
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-          return
-        }
-        e.preventDefault()
-        toggleVoiceRecordingSafe()
-      }
+      const pressed = acceleratorFromEvent(e)
+      if (!pressed || !HOTKEY_ACTIONS.some((action) => hotkeys[action] === pressed)) return
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return
+      e.preventDefault()
+      if (pressed === hotkeys.talk) toggleVoiceRecordingSafe()
+      else if (pressed === hotkeys.chat) toggleDesktopChatRef.current()
+      else toggleAlwaysListeningRef.current()
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      unsub?.()
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   const toggleVoiceMute = () => {
@@ -541,6 +564,7 @@ export const CompanionView: React.FC = () => {
       return
     }
     const audio = new Audio(line.audioDataUrl)
+    audio.volume = voiceVolume()
     audio.playbackRate = 1.05
     activeAudioRef.current = audio
     audio.onended = finish
@@ -601,7 +625,7 @@ export const CompanionView: React.FC = () => {
       // New Dialogue Blip Voice Mode (@dialogue_blip.wav)
       if (voiceTypeRef.current === 'blip') {
         const audio = new Audio(dialogueBlipAudio)
-        audio.volume = 0.65
+        audio.volume = 0.65 * voiceVolume()
         activeAudioRef.current = audio
 
         currentSpokenTextRef.current = clean
@@ -659,6 +683,7 @@ export const CompanionView: React.FC = () => {
 
       if (res.success && res.audioDataUrl) {
         const audio = new Audio(res.audioDataUrl)
+        audio.volume = voiceVolume()
         audio.playbackRate = 1.05
         activeAudioRef.current = audio
 
@@ -733,14 +758,28 @@ export const CompanionView: React.FC = () => {
 
   // Voice recording & Real-time Speech-to-Text streaming with local Whisper on GPU
 
+  const micOpeningRef = useRef(false)
+  const micPeakRef = useRef(-1)
+
   const startVoiceRecording = async () => {
-    if (isRecordingVoice || isExecuting || isProcessingVoice) return
+    if (isRecordingVoice || isProcessingVoice || micOpeningRef.current) return
+    if (isExecuting) {
+      setSpeech("Hold on, I'm still thinking, choomba.", 2500)
+      return
+    }
     // The user started talking: Capri stops so the mic doesn't pick her up
     if (isScriptPlayingRef.current) window.api.companion.cancelScript()
     interruptSpeech()
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      micOpeningRef.current = true
+      let stream: MediaStream
+      try {
+        stream = await openMicrophone()
+      } finally {
+        micOpeningRef.current = false
+      }
+      micPeakRef.current = -1
       audioChunksRef.current = []
       setLiveRecognizedText(null)
       setAudioLevel(0)
@@ -751,6 +790,8 @@ export const CompanionView: React.FC = () => {
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
         const ctx = new AudioCtx()
         audioContextRef.current = ctx
+        void ctx.resume().catch(() => {})
+        micPeakRef.current = 0
         const source = ctx.createMediaStreamSource(stream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 128
@@ -767,6 +808,7 @@ export const CompanionView: React.FC = () => {
           const avg = sum / pcmData.length
           const level = Math.min(100, Math.round((avg / 120) * 100))
           setAudioLevel(level)
+          micPeakRef.current = Math.max(micPeakRef.current, level)
 
           if (level > 15) {
             lastAudioActivityRef.current = Date.now()
@@ -801,7 +843,7 @@ export const CompanionView: React.FC = () => {
             const currentBlob = new Blob(audioChunksRef.current, { type: mimeType })
             try {
               const arrayBuffer = await currentBlob.arrayBuffer()
-              const partial = await window.api.voice.transcribe(arrayBuffer)
+              const partial = await window.api.voice.transcribe(arrayBuffer, true)
               if (partial.success && partial.text && partial.text.trim()) {
                 setLiveRecognizedText(partial.text.trim())
               }
@@ -852,13 +894,25 @@ export const CompanionView: React.FC = () => {
         setIsProcessingVoice(true)
         try {
           const arrayBuffer = await blob.arrayBuffer()
+          // The first time Whisper is still downloading, and silence would look like a broken mic
+          if ((await window.api.voice.sttState()) === 'loading') {
+            setSpeech("I'm still loading my hearing, choomba. The first time can take a few minutes, hold on.", 0)
+          }
           const res = await window.api.voice.transcribe(arrayBuffer)
+          setSpeech(null)
           const isEs = currentLangRef.current === 'es'
           const finalText = res.success && res.text ? res.text.trim() : liveRecognizedText
           if (finalText) {
             setInputText('')
             setActiveUserPrompt(finalText)
             handleSendMessage(finalText)
+          } else if ((await window.api.voice.sttState()) === 'failed') {
+            setSpeech("My hearing isn't installed properly, choomba. Run the setup again from the model settings.", 6000)
+          } else if (micPeakRef.current >= 0 && micPeakRef.current < MIN_MIC_LEVEL) {
+            setSpeech("Your microphone isn't sending any sound, choomba. Check the one selected in my voice settings.", 6000)
+          } else if (res.error && !/no speech/i.test(res.error)) {
+            console.warn('[VoiceRecord] Transcription failed:', res.error)
+            setSpeech(`Something failed in my hearing, choomba: ${res.error.slice(0, 140)}`, 8000)
           } else {
             setSpeech(
               isEs
@@ -879,13 +933,23 @@ export const CompanionView: React.FC = () => {
         }
       }
 
+      // Unplugged or taken by another app in the middle: finish instead of staying stuck recording
+      recorder.onerror = (e) => {
+        console.warn('[VoiceRecord] Recorder error:', e)
+        if (recorder.state !== 'inactive') recorder.stop()
+      }
+      stream.getAudioTracks().forEach((track) => {
+        track.onended = () => {
+          if (recorder.state !== 'inactive') recorder.stop()
+        }
+      })
+
       recorder.start(700)
       setIsRecordingVoice(true)
       isRecordingVoiceRef.current = true
     } catch (err: any) {
       console.error('[VoiceRecord] getUserMedia error:', err)
-      const isEs = currentLangRef.current === 'es'
-      setSpeech(isEs ? "¡No pude acceder al micrófono, choomba! Revisá los permisos." : "Could not access mic, choomba! Check permissions.", 3500)
+      setSpeech(micErrorLine(micErrorKind(err)), 6000)
     }
   }
 
@@ -958,7 +1022,7 @@ export const CompanionView: React.FC = () => {
     } catch (err) {
       listener.stop()
       console.error('[AlwaysListening] Could not open the microphone:', err)
-      setSpeech(isEs ? '¡No pude abrir el micrófono, choomba! Revisá los permisos.' : "Couldn't open the mic, choomba! Check permissions.", 3500)
+      setSpeech(micErrorLine(micErrorKind(err)), 6000)
     } finally {
       alwaysStartingRef.current = false
     }
@@ -1902,7 +1966,8 @@ export const CompanionView: React.FC = () => {
           className="w-full aspect-video flex items-center justify-center relative z-10 cursor-pointer overflow-visible select-none flex-shrink-0"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <div className="w-full h-full flex items-center justify-center overflow-visible">
+          {/* Only her: what she says has to stay readable */}
+          <div className="w-full h-full flex items-center justify-center overflow-visible" style={{ opacity: gamingOpacity }}>
             <CapriRenderer
               state={desktopCompanionState}
               noShadow={false}
@@ -2182,7 +2247,7 @@ export const CompanionView: React.FC = () => {
                     <span className="font-hud tracking-wide text-white">Capri</span>
                     <span className="text-zinc-500 font-normal">|</span>
                     <span className="text-[#00f0ff] font-semibold">{companionStatusLabel}</span>
-                    <span className="text-[9px] text-zinc-400 font-normal opacity-70 ml-0.5">(Ctrl + {localizeLine('Click', currentLang)})</span>
+                    <span className="text-[9px] text-zinc-400 font-normal opacity-70 ml-0.5">({/Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl'} + {localizeLine('Click', currentLang)})</span>
                   </button>
 
                   <button
@@ -2271,7 +2336,7 @@ export const CompanionView: React.FC = () => {
               <span className="font-hud tracking-wide text-white">Capri</span>
               <span className="text-zinc-500 font-normal">|</span>
               <span className="text-[#00f0ff] font-semibold">{companionStatusLabel}</span>
-              <span className="text-[9px] text-zinc-400 font-normal opacity-70 ml-0.5">(Ctrl + {localizeLine('Click', currentLang)})</span>
+              <span className="text-[9px] text-zinc-400 font-normal opacity-70 ml-0.5">({/Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl'} + {localizeLine('Click', currentLang)})</span>
             </button>
 
             <button

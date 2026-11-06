@@ -1,5 +1,6 @@
 import { createOnboardingWindow } from './onboarding-window'
 import { BrowserWindow, app, screen, globalShortcut } from 'electron'
+import { DEFAULT_HOTKEYS, hotkeyProblem, type HotkeyAction, type HotkeyProblem, type Hotkeys } from '../../shared/hotkeys'
 import { createCompanionWindow } from './companion-window'
 import { createDeckWindow } from './deck-window'
 import { createScannerWindow } from './scanner-window'
@@ -76,6 +77,9 @@ export class WindowManager {
   public init(): void {
     this.companionWin = createCompanionWindow()
     this.deckWin = createDeckWindow()
+    // If that monitor isn't connected now she stays on the main one, and it's kept for when it's back
+    const savedDisplay = consciousnessService.getCompanionDisplayId()
+    if (savedDisplay !== null) this.moveCompanionToDisplay(savedDisplay, false)
 
     // First launch after installing: ask the user's name, language and set up dependencies
     if (!consciousnessService.isOnboardingDone()) {
@@ -132,27 +136,8 @@ export class WindowManager {
       console.warn('[WindowManager] Failed to register global shortcut Ctrl+Alt+V:', err)
     }
 
-    // Down Arrow (Flecha hacia abajo) - dedicated push/toggle hotkey to speak with Capri
-    try {
-      if (!isMac) globalShortcut.register('Down', () => {
-        this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_RECORDING)
-      })
-      if (!isMac) console.log('[WindowManager] Registered global shortcut "Down" for voice command')
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Down:', err)
-    }
-
     // Escape cancels a push-to-talk recording. Registered only while recording
     // (see setVoiceRecordingActive) so Esc keeps working normally in every other app.
-
-    // Right Arrow (Flecha derecha) - toggle Always Listening mode
-    try {
-      globalShortcut.register(isMac ? 'CommandOrControl+Alt+L' : 'Right', () => {
-        this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING)
-      })
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Right:', err)
-    }
 
     // Linux can't report Ctrl while Capri is click-through, so this replaces Ctrl + hover in Gaming Mode
     if (isLinux || isMac) {
@@ -166,14 +151,11 @@ export class WindowManager {
       }
     }
 
-    // Left Arrow (Flecha izquierda) - open/close Capri's chat (same as Ctrl + Click on her)
-    try {
-      globalShortcut.register(isMac ? 'CommandOrControl+Alt+C' : 'Left', () => {
-        this.broadcast(IPC_CHANNELS.COMPANION_TOGGLE_CHAT)
-      })
-    } catch (err) {
-      console.warn('[WindowManager] Failed to register global shortcut Left:', err)
-    }
+    // The arrows are global only while another app has the focus: in her own windows they belong to
+    // the text fields, and those windows handle them on their own
+    this.syncArrowKeys()
+    app.on('browser-window-focus', () => this.syncArrowKeys())
+    app.on('browser-window-blur', () => setTimeout(() => this.syncArrowKeys(), 50))
 
     // Listen for language changes and broadcast to all windows
     consciousnessService.onLanguageChanged((lang) => {
@@ -195,6 +177,81 @@ export class WindowManager {
     this.onboardingWin.on('closed', () => {
       this.onboardingWin = null
     })
+  }
+
+  private registeredHotkeys: string[] = []
+
+  private releaseHotkeys(): void {
+    for (const key of this.registeredHotkeys) {
+      try {
+        globalShortcut.unregister(key)
+      } catch (err) {
+        console.warn(`[WindowManager] Could not release the shortcut ${key}:`, err)
+      }
+    }
+    this.registeredHotkeys = []
+  }
+
+  private syncArrowKeys(): void {
+    const wanted = consciousnessService.getArrowKeysEnabled() && !BrowserWindow.getFocusedWindow()
+    if (wanted === this.registeredHotkeys.length > 0) return
+    if (!wanted) return this.releaseHotkeys()
+    const hotkeys = consciousnessService.getHotkeys()
+    const keys: [string, string][] = [
+      [hotkeys.talk, IPC_CHANNELS.VOICE_TOGGLE_RECORDING],
+      [hotkeys.listen, IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING],
+      [hotkeys.chat, IPC_CHANNELS.COMPANION_TOGGLE_CHAT]
+    ]
+    for (const [key, channel] of keys) {
+      try {
+        if(isMac && key==='Alt+Super+V' && globalShortcut.isRegistered('CommandOrControl+Alt+V')) continue
+        if (globalShortcut.register(key, () => this.broadcast(channel))) this.registeredHotkeys.push(key)
+        else console.warn(`[WindowManager] The shortcut ${key} belongs to another app`)
+      } catch (err) {
+        console.warn(`[WindowManager] Could not register the shortcut ${key}:`, err)
+      }
+    }
+  }
+
+  public setArrowKeysEnabled(enabled: boolean): void {
+    consciousnessService.setArrowKeysEnabled(enabled)
+    this.syncArrowKeys()
+  }
+
+  /** Changes one of her keys. It stays as it was if the new one can't be used, and says why */
+  public setHotkey(action: HotkeyAction, accelerator: string): { hotkeys: Hotkeys; problem: HotkeyProblem | null } {
+    const current = consciousnessService.getHotkeys()
+    if (current[action] === accelerator) return { hotkeys: current, problem: null }
+    let problem = hotkeyProblem(accelerator, action, current)
+    if (!problem) {
+      this.releaseHotkeys()
+      problem = this.canRegister(accelerator) ? null : 'taken'
+    }
+    if (!problem) {
+      consciousnessService.setHotkeys({ ...current, [action]: accelerator })
+      this.broadcast(IPC_CHANNELS.HOTKEYS_CHANGED, consciousnessService.getHotkeys())
+    }
+    this.syncArrowKeys()
+    return { hotkeys: consciousnessService.getHotkeys(), problem }
+  }
+
+  public resetHotkeys(): Hotkeys {
+    this.releaseHotkeys()
+    consciousnessService.setHotkeys(DEFAULT_HOTKEYS)
+    this.broadcast(IPC_CHANNELS.HOTKEYS_CHANGED, DEFAULT_HOTKEYS)
+    this.syncArrowKeys()
+    return DEFAULT_HOTKEYS
+  }
+
+  /** Whether the system would give her this key: another app may already hold it */
+  private canRegister(accelerator: string): boolean {
+    try {
+      if (!globalShortcut.register(accelerator, () => {})) return false
+      globalShortcut.unregister(accelerator)
+      return true
+    } catch {
+      return false
+    }
   }
 
   public finishOnboarding(): void {
@@ -284,7 +341,7 @@ export class WindowManager {
   ): boolean {
     if (!this.companionWin || this.companionWin.isDestroyed()) return false
 
-    const primaryDisplay = isMac ? screen.getDisplayMatching(windowRect ? {x: windowRect.left, y: windowRect.top, width: windowRect.width, height: windowRect.height} : this.companionWin.getBounds()) : screen.getPrimaryDisplay()
+    const primaryDisplay = isMac && windowRect ? screen.getDisplayMatching({x:windowRect.left,y:windowRect.top,width:windowRect.width,height:windowRect.height}) : this.currentDisplay()
     const { workArea } = primaryDisplay
 
     if (enabled) {
@@ -349,7 +406,7 @@ export class WindowManager {
     sittingPose: 'perch' | 'front' = 'perch'
   ): void {
     if (!this.companionWin || this.companionWin.isDestroyed()) return
-    const primaryDisplay = isMac ? screen.getDisplayMatching(windowRect ? {x: windowRect.left, y: windowRect.top, width: windowRect.width, height: windowRect.height} : this.companionWin.getBounds()) : screen.getPrimaryDisplay()
+    const primaryDisplay = isMac && windowRect ? screen.getDisplayMatching({x:windowRect.left,y:windowRect.top,width:windowRect.width,height:windowRect.height}) : this.currentDisplay()
     const { workArea } = primaryDisplay
     const width = 360
     const height = 360
@@ -394,6 +451,43 @@ export class WindowManager {
     this.forwardMouseOnLinux(this.companionWin, effective)
   }
 
+  public listDisplays(): { id: number; label: string; width: number; height: number; primary: boolean; current: boolean }[] {
+    const primary = screen.getPrimaryDisplay().id
+    const current = this.currentDisplay().id
+    return screen.getAllDisplays().map((d) => ({
+      id: d.id,
+      label: d.label || '',
+      width: d.size.width,
+      height: d.size.height,
+      primary: d.id === primary,
+      current: d.id === current
+    }))
+  }
+
+  /** Puts her in the corner of a monitor and remembers it for the next start */
+  public moveCompanionToDisplay(id: number, remember = true): boolean {
+    const display = screen.getAllDisplays().find((d) => d.id === id)
+    if (!display || !this.companionWin || this.companionWin.isDestroyed()) return false
+    const { width, height } = this.companionWin.getBounds()
+    const { workArea } = display
+    this.companionWin.setBounds({ x: workArea.x + workArea.width - width - 20, y: workArea.y + workArea.height - height - 20, width, height }, false)
+    if (remember) consciousnessService.setCompanionDisplayId(id)
+    return true
+  }
+
+  /** The screen she's on, so moving her to another monitor keeps her there */
+  private currentDisplay(): Electron.Display {
+    if (this.companionWin && !this.companionWin.isDestroyed()) return screen.getDisplayMatching(this.companionWin.getBounds())
+    return screen.getPrimaryDisplay()
+  }
+
+  /** Outside her body clicks go to whatever is behind her window */
+  public setCompanionHitThrough(ignore: boolean): void {
+    if (this.isGamingMode || !this.companionWin || this.companionWin.isDestroyed()) return
+    if (ignore) this.companionWin.setIgnoreMouseEvents(true, { forward: true })
+    else this.companionWin.setIgnoreMouseEvents(false)
+  }
+
   public setSavedGamingPosition(pos: { x: number; y: number } | null): void {
     this.savedGamingPosition = pos
   }
@@ -427,7 +521,7 @@ export class WindowManager {
 
       // Dock to position with ample vertical room for downward speech bubble
       // If the user already moved Capri in Gaming Mode, prioritize her saved position
-      const primaryDisplay = screen.getPrimaryDisplay()
+      const primaryDisplay = this.currentDisplay()
       const workArea = primaryDisplay.workArea
       const width = 360
       const height = 540
@@ -482,7 +576,7 @@ export class WindowManager {
         } catch {}
       })
 
-      const primaryDisplay = screen.getPrimaryDisplay()
+      const primaryDisplay = this.currentDisplay()
       const workArea = primaryDisplay.workArea
       const width = 420
       const height = 520

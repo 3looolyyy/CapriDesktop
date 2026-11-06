@@ -6,7 +6,7 @@
  */
 
 import { macHelper, macWindows, quitMacApp } from './mac-desktop'
-import { exec, execFile, spawn } from 'child_process'
+import { exec, execFile, spawn } from './hidden-process'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'

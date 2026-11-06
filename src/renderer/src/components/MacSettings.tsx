@@ -82,6 +82,11 @@ export const MacSettings: React.FC = () => {
       </div>
 
       <div className="space-y-2 border-b border-[#633138] pb-4">
+        <h3 className="font-semibold">Mac commands</h3>
+        <p className="text-xs">Try “battery status”, “how much storage do I have”, “what macOS version am I on”, “set volume to 35 percent”, “mute the speakers”, “open my downloads folder”, or “open Wi-Fi settings”. System sound is separate from Capri’s voice volume. Wi-Fi, Bluetooth and privacy changes are made by you in System Settings.</p>
+        <p className="text-xs">Voice settings also contains microphone selection, sound/glitch volume, monitor selection, customizable shortcuts and game-mode opacity. Hey Capri uses the default Mac microphone; the microphone picker applies to other voice input.</p>
+      </div>
+      <div className="space-y-2 border-b border-[#633138] pb-4">
         <h3 className="font-semibold">Screen comments</h3>
         <p className="text-xs">Off by default. When enabled, Capri sends a screenshot of the display under your pointer to your cloud vision provider at this interval. Pauses while the Mac is locked or Capri is busy. Screen Recording permission is required.</p>
         <label className="flex flex-wrap items-center gap-2 text-sm">Every

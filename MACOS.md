@@ -64,7 +64,7 @@ Mac update checks open the upstream release page for manual updates. This person
 
 Supported macros: apps, URLs, music/media controls, ordinary companion game mode, speech and waits. Shell-command macros, Paint drawing, ShadowPlay and League/Cyberpunk integrations are unavailable on Mac. Windows/Linux runtime behavior remains untested.
 
-Validation: 39 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
+Validation: 46 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
 
 ## Native Mac compatibility update (1.0.12)
 
@@ -72,4 +72,16 @@ Current local time/date/day questions are answered from the device clock, includ
 
 Explicit Chrome, Firefox, Safari, Edge, Brave and Opera requests open the named installed browser; a query opens in that browser. Missing apps return a failure. Explorer/File Explorer resolves to Finder, Task Manager to Activity Monitor, Control Panel to System Settings, Notepad to TextEdit and calc to Calculator. Apps are asked to quit normally, allowing save prompts. The coding terminal uses a Unix shell on Mac.
 
-Validation: 39 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
+Validation: 46 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
+
+## Upstream 1.0.4 / Mac revision 13
+
+The port now includes upstream versions 1.0.1 through 1.0.4. The installed version label is 1.0.4-mac.13. See [UPSTREAM-MAC-REVIEW.md](UPSTREAM-MAC-REVIEW.md) for the release-by-release change list and validation limits.
+
+Voice settings now includes microphone selection, separate sound/glitch volumes, monitor selection, customizable shortcut keys and game-mode opacity. Cmd–Option–V/L/C remain the Mac defaults. Hey Capri always uses the default Mac microphone; the picker applies to other voice input. Boredom-triggered music/tabs are off by default and require a separate explicit opt-in.
+
+Native Mac commands now include system volume/mute, battery, disk space, macOS version, common Finder folders and opening common System Settings pages. These commands do not silently change Wi-Fi/Bluetooth/privacy settings or run arbitrary system shell commands. Coding terminal commands can find installed Homebrew tools when launched from Finder/login.
+
+The upstream requirements-storage chooser/move planner is available on Mac, including its speech cache. Review its plan before confirming. A physical external-disk move has not been tested. System Python/FFmpeg installation remains manual; model downloads remain explicit selections.
+
+On Mac, storage moves leave a standalone/shared Ollama library in place. Only model folders already managed under Capri’s selected storage root are eligible to move; a running standalone server must be quit first. Speech caches and Capri’s Python environment can be relocated independently.

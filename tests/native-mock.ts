@@ -20,8 +20,20 @@ export const launchMacApp = async (name: string) => {
   calls.push(`launch:${name}`)
   return true
 }
-export const appleScript = async () => {
+let volume:number|null=null
+let muted=false
+export function mockSystemVolume(value:number|null){volume=value;muted=false}
+export const appleScript = async (script='') => {
   calls.push('applescript')
+  if(volume!==null) {
+    const set=script.match(/set volume output volume (\d+)/)
+    if(set) volume=Number(set[1])
+    if(script.includes('set volume with output muted')) muted=true
+    if(script.includes('set volume without output muted')) muted=false
+    if(script.includes('return output muted')) return String(muted)
+    if(script.includes('return output volume')) return String(volume)
+    return `${volume}|${muted}`
+  }
   if (desktopMode === 'success') return 'playing\nArtist - Example\nspotify:track:1234567890123456789012'
   throw new Error('Automation denied (test)')
 }

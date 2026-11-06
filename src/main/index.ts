@@ -1,5 +1,5 @@
-import { startScreenComments } from './services/screen-comment-service'
 import './services/mac-bootstrap'
+import { startScreenComments } from './services/screen-comment-service'
 import { isMac } from './services/platform'
 import { app, BrowserWindow, Menu } from 'electron'
 import { windowManager } from './windows/window-manager'
@@ -72,6 +72,12 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(async () => {
+    const systemReport=app.commandLine.getSwitchValue('mac-system-check')
+    if(isMac && systemReport && app.commandLine.hasSwitch('user-data-dir')) {
+      const {runMacSystemCheck}=await import('./services/mac-system-check')
+      await runMacSystemCheck(systemReport)
+      return
+    }
     const visionReport=app.commandLine.getSwitchValue('cloud-vision-check')
     if (isMac && visionReport && app.commandLine.hasSwitch('user-data-dir')) {
       const {runCloudVisionCheck}=await import('./services/cloud-vision-check')
@@ -105,6 +111,7 @@ if (!gotTheLock) {
         .catch((err) => console.warn('[Setup] Voice repair failed:', err))
         // After the patch notes, so a dialog doesn't step on her first words
         .then(() => new Promise((r) => setTimeout(r, 25000)))
+        .then(() => setupService.refreshPersona())
         .then(() => setupService.warnIfIncomplete())
         .catch((err) => console.warn('[Setup] Setup check failed:', err))
     }

@@ -1,3 +1,12 @@
+import { consciousnessService } from '../src/main/services/consciousness-service'
+import { setStorageRoot, getStorageRoot } from '../src/main/services/storage-location'
+import { speechModelsDir } from '../src/main/services/app-paths'
+import { planMove } from '../src/main/services/storage-move'
+import { parseMacSystemCommand } from '../src/shared/mac-system-commands'
+import { runMacSystemCommand } from '../src/main/services/mac-system-service'
+import { mockSystemVolume } from './native-mock'
+import { defaultHotkeys, normalizeHotkeys, clampGamingOpacity } from '../src/shared/hotkeys'
+import { isVersionRequest, isHoldStillRequest } from '../src/main/agents/spoken-commands'
 import { macAppName } from '../src/main/services/mac-desktop.ts'
 import { deviceClockAnswer, deviceClockContext } from '../src/shared/device-clock'
 import { friendScreenComment } from '../src/shared/screen-comment-style'
@@ -19,7 +28,7 @@ import { isUsageQuestion, parseProcessUsage } from '../src/main/services/mac-usa
 import { parsePlacementCommand, anchorBounds } from '../src/shared/placement'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { platformCapabilities, updateDelivery, captureCrop, recommendedLocalModel, offerDesktopTools } from '../src/shared/platform-policy'
@@ -566,4 +575,90 @@ test('Windows app names resolve to native Mac equivalents',()=>{
  assert.equal(macAppName('calc.exe'),'Calculator')
  assert.equal(macAppName('Some Other App'),'Some Other App')
  assert.ok(deviceClockAnswer('¿Qué hora es?'))
+})
+
+
+test('native Mac commands require explicit actions and leave general conversation alone',()=>{
+ assert.deepEqual(parseMacSystemCommand('set volume to 35 percent'),{action:'set-volume',value:35})
+ assert.deepEqual(parseMacSystemCommand('can you show my battery status?'),{action:'battery'})
+ assert.deepEqual(parseMacSystemCommand('open Wi-Fi settings'),{action:'settings',name:'wi-fi'})
+ assert.deepEqual(parseMacSystemCommand('show my downloads folder'),{action:'folder',name:'downloads'})
+ assert.deepEqual(parseMacSystemCommand('mute the speakers'),{action:'mute'})
+ for(const text of ['explain how volume works','write code to set volume to 30','delete my downloads','empty trash','turn off Wi-Fi','mute yourself','what is battery health']) assert.equal(parseMacSystemCommand(text),null,text)
+})
+
+test('native system settings are bounded, verified and never silently run arbitrary commands',async()=>{
+ if(process.platform!=='darwin') return
+ mockSystemVolume(40)
+ try {
+   assert.equal((await runMacSystemCommand({action:'set-volume',value:35})).output,'System volume is 35%.')
+   assert.equal((await runMacSystemCommand({action:'change-volume',value:-10})).output,'System volume is 25%.')
+   assert.equal((await runMacSystemCommand({action:'mute'})).output,'System sound muted.')
+   assert.equal((await runMacSystemCommand({action:'unmute'})).output,'System sound unmuted.')
+   assert.equal((await runMacSystemCommand({action:'set-volume',value:150})).success,false)
+   assert.equal((await runMacSystemCommand({action:'settings',name:'arbitrary;rm -rf'})).success,false)
+   assert.equal((await runMacSystemCommand({action:'folder',name:'../../etc'})).success,false)
+ } finally {mockSystemVolume(null)}
+})
+
+test('upstream configurable hotkeys keep Mac modifiers and preserve other platform defaults',()=>{
+ assert.deepEqual(defaultHotkeys('darwin'),{talk:'Alt+Super+V',listen:'Alt+Super+L',chat:'Alt+Super+C'})
+ assert.deepEqual(defaultHotkeys('win32'),{talk:'Down',listen:'Right',chat:'Left'})
+ assert.deepEqual(defaultHotkeys('linux'),{talk:'Down',listen:'Right',chat:'Left'})
+ assert.equal(normalizeHotkeys({listen:'Control+Alt+K'}).listen,'Control+Alt+K')
+ assert.equal(clampGamingOpacity(.1),.2)
+ assert.equal(clampGamingOpacity(2),1)
+})
+
+test('upstream fixed commands recognize multilingual version and hold requests without a model',()=>{
+ assert.equal(isVersionRequest('what version are you'),true)
+ assert.equal(isHoldStillRequest('reste ici'),true)
+ assert.equal(isHoldStillRequest('halt still'),true)
+ assert.equal(isHoldStillRequest('stay still'),true)
+ assert.equal(isHoldStillRequest('do not move this file'),false)
+})
+
+
+test('Mac storage planning moves only speech cache paths and keeps a usable default',async()=>{
+ if(process.platform!=='darwin') return
+ const original=speechModelsDir()
+ const snapshot=path.join(original,'models--Systran--faster-whisper-base','snapshots','test')
+ mkdirSync(snapshot,{recursive:true});writeFileSync(path.join(snapshot,'model.bin'),'test model')
+ const destination=path.join(temp,'other-disk','CapriData')
+ const oldModels=process.env.OLLAMA_MODELS
+ process.env.OLLAMA_MODELS=path.join(temp,'no-real-models')
+ try {
+  const plan=await planMove(destination,null)
+  assert.ok(plan.items.some(item=>item.kind==='whisper' && item.from===original && item.to===path.join(destination,'whisper')))
+  assert.equal(readFileSync(path.join(snapshot,'model.bin'),'utf8'),'test model') // planning never moves data
+  setStorageRoot(destination)
+  assert.equal(speechModelsDir(),path.join(destination,'whisper'))
+  setStorageRoot(null)
+  assert.equal(speechModelsDir(),original)
+ } finally {setStorageRoot(null);if(oldModels===undefined) delete process.env.OLLAMA_MODELS;else process.env.OLLAMA_MODELS=oldModels}
+})
+
+
+test('upstream boredom setting is opt-in on Mac and an explicit choice persists',()=>{
+ if(process.platform!=='darwin') return
+ assert.equal(consciousnessService.isBoredomEnabled(),false)
+ consciousnessService.setBoredomEnabled(true)
+ assert.equal(consciousnessService.isBoredomEnabled(),true)
+ consciousnessService.setBoredomEnabled(false)
+})
+
+
+test('Mac storage migration does not take ownership of a standalone Ollama library',async()=>{
+ if(process.platform!=='darwin') return
+ const old=process.env.OLLAMA_MODELS
+ const shared=path.join(temp,'standalone-models')
+ mkdirSync(path.join(shared,'manifests','library','example'),{recursive:true})
+ writeFileSync(path.join(shared,'manifests','library','example','latest'),'not a real model')
+ process.env.OLLAMA_MODELS=shared
+ try {
+   setStorageRoot(null)
+   const plan=await planMove(path.join(temp,'new-capri-root'),null)
+   assert.equal(plan.items.some(item=>item.kind==='models'),false)
+   assert.equal(readFileSync(path.join(shared,'manifests','library','example','latest'),'utf8'),'not a real model')
+ } finally {setStorageRoot(null);if(old===undefined) delete process.env.OLLAMA_MODELS;else process.env.OLLAMA_MODELS=old}
 })

@@ -1,5 +1,5 @@
 import { shell } from 'electron'
-import { isMac } from './platform'
+import { localizeLine } from '../../shared/lines'
 import { agentManager } from '../agents/agent-manager'
 import { scannerService } from './scanner-service'
 import { consciousnessService } from './consciousness-service'
@@ -43,12 +43,12 @@ const YOUTUBE_SEARCHES = [
 ]
 
 const WEB_SEARCHES = [
-  'descubrimientos cientificos mas raros del mundo',
+  'the strangest scientific discoveries in the world',
   'cyberpunk aesthetics wallpaper 4k',
-  'quantum computing breakthrough 2026',
-  'misterios sin resolver de internet',
-  'proyectos locos de programadores en github',
-  'teorias conspirativas mas divertidas de la tecnologia'
+  'quantum computing breakthroughs',
+  'unsolved internet mysteries',
+  'crazy programmer projects on github',
+  'funniest technology conspiracy theories'
 ]
 
 export class BoredomService {
@@ -67,7 +67,6 @@ export class BoredomService {
   }
 
   public start(): void {
-    if (isMac) return // Personal Mac: never launch unsolicited music, tabs or searches.
     if (this.isRunning) return
 
     // Never start if already in Gaming Mode or in an active game
@@ -144,7 +143,7 @@ export class BoredomService {
   }
 
   public canTriggerAutonomous(): boolean {
-    if (!this.isRunning) return false
+    if (!this.isRunning || !consciousnessService.isBoredomEnabled()) return false
 
     // Never interrupt active chat or executing tool tasks
     if (agentManager.getStatus().isRunning) {
@@ -267,7 +266,7 @@ export class BoredomService {
     }
 
     // Web Search
-    const webQuery = WEB_SEARCHES[Math.floor(Math.random() * WEB_SEARCHES.length)]
+    const webQuery = localizeLine(WEB_SEARCHES[Math.floor(Math.random() * WEB_SEARCHES.length)], consciousnessService.getPreferredLanguage())
     const phrasesEs = [
       `¡Uff, qué embole! Me puse a escanear la Red de puro aburrimiento y encontré algo que tenés que ver, abriendo pestaña...`,
       `Estoy re aburrida, {name}... Mirá lo que me puse a googlear en la Red, no me juzgues que una netrunner siempre tiene curiosidad.`,
