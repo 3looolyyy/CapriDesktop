@@ -279,6 +279,36 @@ export const pt: Messages = {
   ob_storageDefault: 'Pastas padrão no disco do sistema',
   ob_storageChange: 'Alterar',
   ob_storageReset: 'Usar padrão',
+
+  ob_moveTitle: "Mover o que já está instalado?",
+
+  ob_moveModels: "Os modelos dela",
+
+  ob_moveWhisper: "A audição dela (Whisper)",
+
+  ob_moveVoiceEnv: "O ambiente de voz dela",
+
+  ob_moveTools: "FFmpeg e ferramentas",
+
+  ob_moveOllamaProgram: "Programa Ollama (será baixado de novo)",
+
+  ob_moveTotal: "Total",
+
+  ob_moveFree: "Livre lá",
+
+  ob_moveNote: "Primeiro é copiado, e os arquivos antigos só são apagados no final. O Python fica onde está. Para mover a própria Capri, execute o instalador de novo e escolha outra pasta.",
+
+  ob_moveNoSpace: "Não há espaço livre suficiente nesse disco.",
+
+  ob_moveBadFolder: "Essa pasta está dentro do que será movido. Escolha outra.",
+
+  ob_moveCancel: "Cancelar",
+
+  ob_moveConfirm: "Mover",
+
+  ob_moveDone: "Pronto. Ela já usa o novo local.",
+
+  ob_moveFailed: "Não foi possível mover. O que não terminou continua onde estava.",
   vs_monitor: 'Monitor',
   vs_monitorMain: 'principal',
   vs_boredom: 'Deixar ela ficar entediada: abre abas e música sozinha quando você não fala',

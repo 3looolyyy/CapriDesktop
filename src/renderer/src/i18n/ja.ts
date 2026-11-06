@@ -279,6 +279,36 @@ export const ja: Messages = {
   ob_storageDefault: 'システムディスクの既定のフォルダー',
   ob_storageChange: '変更',
   ob_storageReset: '既定に戻す',
+
+  ob_moveTitle: "インストール済みのものを移動しますか?",
+
+  ob_moveModels: "彼女のモデル",
+
+  ob_moveWhisper: "彼女の聴覚 (Whisper)",
+
+  ob_moveVoiceEnv: "彼女の音声環境",
+
+  ob_moveTools: "FFmpeg とツール",
+
+  ob_moveOllamaProgram: "Ollama 本体 (再ダウンロードされます)",
+
+  ob_moveTotal: "合計",
+
+  ob_moveFree: "移動先の空き",
+
+  ob_moveNote: "先にコピーし、古いファイルは最後に削除します。Python はそのままです。Capri 本体を移動するには、インストーラーをもう一度実行して別のフォルダーを選んでください。",
+
+  ob_moveNoSpace: "そのディスクの空き容量が足りません。",
+
+  ob_moveBadFolder: "そのフォルダーは移動対象の中にあります。別のフォルダーを選んでください。",
+
+  ob_moveCancel: "キャンセル",
+
+  ob_moveConfirm: "移動",
+
+  ob_moveDone: "完了しました。新しい場所を使っています。",
+
+  ob_moveFailed: "移動できませんでした。完了していないものは元の場所に残っています。",
   vs_monitor: 'モニター',
   vs_monitorMain: 'メイン',
   vs_boredom: '退屈を許可: 話しかけないと自分でタブや音楽を開きます',

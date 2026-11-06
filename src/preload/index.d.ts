@@ -126,7 +126,16 @@ export interface IElectronAPI {
     finish: () => Promise<boolean>
     open: () => Promise<boolean>
     getStorage: () => Promise<string | null>
-    chooseStorage: (reset?: boolean) => Promise<string | null>
+    chooseStorage: (reset?: boolean) => Promise<{
+      root: string | null
+      items: { kind: 'models' | 'whisper' | 'voiceEnv' | 'tools'; from: string; to: string; bytes: number }[]
+      ollamaProgram: { from: string; to: string; bytes: number } | null
+      neededBytes: number
+      freeBytes: number | null
+      enoughSpace: boolean
+      invalid: boolean
+    } | null>
+    moveStorage: (root: string | null) => Promise<{ ok: boolean; root: string | null; status: any }>
   }
   system: {
     selectDirectory: () => Promise<string | null>

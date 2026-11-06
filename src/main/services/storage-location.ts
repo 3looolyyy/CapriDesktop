@@ -22,11 +22,22 @@ function chooseAutomatically(): string | null {
   return path.join(drive, 'CapriData')
 }
 
-export function getStorageRoot(): string | null {
-  let saved: { root?: unknown; chosen?: unknown } = {}
+interface StorageSettings {
+  root?: unknown
+  chosen?: unknown
+  earlier?: unknown
+}
+
+function readSettings(): StorageSettings {
   try {
-    saved = JSON.parse(fs.readFileSync(settingsFile(), 'utf-8'))
-  } catch {}
+    return JSON.parse(fs.readFileSync(settingsFile(), 'utf-8'))
+  } catch {
+    return {}
+  }
+}
+
+export function getStorageRoot(): string | null {
+  const saved = readSettings()
   if (typeof saved.root === 'string' && saved.root) return saved.root
   // "The default folders" only sticks if someone asked for it. Otherwise a first install on C: would
   // keep requirements there after uninstalling and installing her on another disk
@@ -41,7 +52,23 @@ export function getStorageRoot(): string | null {
 }
 
 export function setStorageRoot(root: string | null): void {
-  fs.writeFileSync(settingsFile(), JSON.stringify({ root, chosen: true }, null, 2), 'utf-8')
+  const saved = readSettings()
+  const earlier = new Set<string>(Array.isArray(saved.earlier) ? saved.earlier : [])
+  if (typeof saved.root === 'string' && saved.root) earlier.add(saved.root)
+  if (root) earlier.delete(root)
+  fs.writeFileSync(settingsFile(), JSON.stringify({ root, chosen: true, earlier: Array.from(earlier) }, null, 2), 'utf-8')
+}
+
+/**
+ * Where an installed program can be, newest location first. A program can't follow a location change
+ * by copying its folder (Windows has it registered, and a voice environment depends on its Python),
+ * so the old location keeps being looked at.
+ */
+export function programDirs(name: string): string[] {
+  const saved = readSettings()
+  const root = getStorageRoot()
+  const earlier = Array.isArray(saved.earlier) ? (saved.earlier as string[]) : []
+  return [...(root ? [root] : []), ...earlier].map((r) => path.join(r, name))
 }
 
 /** A folder inside the chosen location, or null when the default place applies */
@@ -54,7 +81,7 @@ export function storageDir(name: string): string | null {
  * Whether that folder has a model. The manifests folder alone says nothing: Ollama makes it empty as
  * soon as anyone asks which models it has, and she asks every time she checks her setup.
  */
-function hasOllamaModels(modelsDir: string): boolean {
+export function hasOllamaModels(modelsDir: string): boolean {
   const hasFile = (dir: string): boolean => {
     try {
       return fs.readdirSync(dir, { withFileTypes: true }).some((e) => (e.isDirectory() ? hasFile(path.join(dir, e.name)) : true))

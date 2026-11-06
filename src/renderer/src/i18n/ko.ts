@@ -279,6 +279,36 @@ export const ko: Messages = {
   ob_storageDefault: '시스템 디스크의 기본 폴더',
   ob_storageChange: '변경',
   ob_storageReset: '기본값 사용',
+
+  ob_moveTitle: "이미 설치된 항목을 옮길까요?",
+
+  ob_moveModels: "모델",
+
+  ob_moveWhisper: "청각 (Whisper)",
+
+  ob_moveVoiceEnv: "음성 환경",
+
+  ob_moveTools: "FFmpeg 및 도구",
+
+  ob_moveOllamaProgram: "Ollama 프로그램 (다시 다운로드됨)",
+
+  ob_moveTotal: "합계",
+
+  ob_moveFree: "대상 여유 공간",
+
+  ob_moveNote: "먼저 복사한 뒤 이전 파일은 마지막에 삭제합니다. Python은 그대로 둡니다. Capri 자체를 옮기려면 설치 프로그램을 다시 실행해 다른 폴더를 선택하세요.",
+
+  ob_moveNoSpace: "해당 디스크의 여유 공간이 부족합니다.",
+
+  ob_moveBadFolder: "그 폴더는 옮길 항목 안에 있습니다. 다른 폴더를 선택하세요.",
+
+  ob_moveCancel: "취소",
+
+  ob_moveConfirm: "옮기기",
+
+  ob_moveDone: "완료했습니다. 이제 새 위치를 사용합니다.",
+
+  ob_moveFailed: "옮기지 못했습니다. 끝나지 않은 항목은 원래 위치에 남아 있습니다.",
   vs_monitor: '모니터',
   vs_monitorMain: '주 모니터',
   vs_boredom: '심심해하기 허용: 말을 걸지 않으면 혼자 탭과 음악을 엽니다',

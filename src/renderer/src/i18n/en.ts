@@ -277,6 +277,36 @@ export const en = {
   ob_storageDefault: 'Default folders on the system disk',
   ob_storageChange: 'Change',
   ob_storageReset: 'Use default',
+
+  ob_moveTitle: "Move what's already installed?",
+
+  ob_moveModels: "Her models",
+
+  ob_moveWhisper: "Her hearing (Whisper)",
+
+  ob_moveVoiceEnv: "Her voice environment",
+
+  ob_moveTools: "FFmpeg and tools",
+
+  ob_moveOllamaProgram: "Ollama program (downloaded again)",
+
+  ob_moveTotal: "Total",
+
+  ob_moveFree: "Free there",
+
+  ob_moveNote: "It's copied first and the old files are deleted only at the end. Python stays where it is. To move Capri herself, run her installer again and pick another folder.",
+
+  ob_moveNoSpace: "There isn't enough free space on that disk.",
+
+  ob_moveBadFolder: "That folder is inside what's being moved. Pick another one.",
+
+  ob_moveCancel: "Cancel",
+
+  ob_moveConfirm: "Move",
+
+  ob_moveDone: "Moved. She's using the new location.",
+
+  ob_moveFailed: "It couldn't be moved. Everything that wasn't finished stays where it was.",
   vs_monitor: 'Monitor',
   vs_monitorMain: 'main',
   vs_boredom: 'Let her get bored: she opens tabs and music by herself when you are quiet',

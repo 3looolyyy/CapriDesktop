@@ -26,6 +26,7 @@ export const IPC_CHANNELS = {
   BOREDOM_SET_ENABLED: 'boredom:setEnabled',
   SETUP_GET_STORAGE: 'setup:getStorage',
   SETUP_CHOOSE_STORAGE: 'setup:chooseStorage',
+  SETUP_MOVE_STORAGE: 'setup:moveStorage',
   COMPANION_SCRIPT_EVENT: 'companion:scriptEvent',
   COMPANION_SCRIPT_LINE_DONE: 'companion:scriptLineDone',
   COMPANION_SCRIPT_CANCEL: 'companion:scriptCancel',

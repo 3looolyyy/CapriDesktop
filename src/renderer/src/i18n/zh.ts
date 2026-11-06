@@ -279,6 +279,36 @@ export const zh: Messages = {
   ob_storageDefault: '系统盘上的默认文件夹',
   ob_storageChange: '更改',
   ob_storageReset: '使用默认',
+
+  ob_moveTitle: "要移动已安装的内容吗?",
+
+  ob_moveModels: "她的模型",
+
+  ob_moveWhisper: "她的听觉 (Whisper)",
+
+  ob_moveVoiceEnv: "她的语音环境",
+
+  ob_moveTools: "FFmpeg 和工具",
+
+  ob_moveOllamaProgram: "Ollama 程序(将重新下载)",
+
+  ob_moveTotal: "总计",
+
+  ob_moveFree: "目标可用空间",
+
+  ob_moveNote: "先复制,旧文件最后才删除。Python 保持原位。要移动 Capri 本身,请重新运行安装程序并选择其他文件夹。",
+
+  ob_moveNoSpace: "该磁盘的可用空间不足。",
+
+  ob_moveBadFolder: "该文件夹位于要移动的内容之中。请选择其他文件夹。",
+
+  ob_moveCancel: "取消",
+
+  ob_moveConfirm: "移动",
+
+  ob_moveDone: "完成。她已在使用新位置。",
+
+  ob_moveFailed: "无法移动。未完成的内容仍在原处。",
   vs_monitor: '显示器',
   vs_monitorMain: '主显示器',
   vs_boredom: '允许她感到无聊: 你不说话时她会自己打开标签页和音乐',

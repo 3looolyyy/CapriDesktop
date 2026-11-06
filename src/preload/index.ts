@@ -294,7 +294,8 @@ const api = {
     finish: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_FINISH),
     open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ONBOARDING_OPEN),
     getStorage: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_GET_STORAGE),
-    chooseStorage: (reset?: boolean): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, reset)
+    chooseStorage: (reset?: boolean): Promise<any> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, reset),
+    moveStorage: (root: string | null): Promise<{ ok: boolean; root: string | null; status: any }> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_MOVE_STORAGE, root)
   },
 
   system: {

@@ -1,4 +1,4 @@
-import { ollamaModelsDir, storageDir } from './storage-location'
+import { ollamaModelsDir, programDirs } from './storage-location'
 import { isCloudMode, llmFetch } from './llm-gateway'
 import { toolsDir } from './app-paths'
 import { findOnPath, isLinux, isWindows, killProcesses } from './platform'
@@ -111,7 +111,7 @@ export class OllamaService {
     }
 
     const candidates = [
-      storageDir('Ollama') ? path.join(storageDir('Ollama') as string, 'ollama.exe') : '',
+      ...programDirs('Ollama').map((dir) => path.join(dir, 'ollama.exe')),
       process.env.LOCALAPPDATA
         ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe')
         : '',

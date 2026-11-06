@@ -409,7 +409,9 @@ Paint drawing isn't available on Linux. Everything that differs from Windows is 
 
 ### Choosing a disk
 
-If you install her on a disk other than the system's, her requirements go there too, in a `CapriData` folder: Python, the voice environment, Whisper, FFmpeg, Ollama and its models. Requirements you already have stay where they are. You can pick another folder in the first-run setup, under **Where to install**.
+If you install her on a disk other than the system's, her requirements go there too, in a `CapriData` folder: Python, the voice environment, Whisper, FFmpeg, Ollama and its models. Models you already have stay where they are. You can pick another folder in the first-run setup, under **Where to install**.
+
+If she's already installed, the same option moves everything to the new folder: it shows what's moving and how much it weighs, copies it, and only deletes the old files at the end. Python stays where it is, and the Ollama program is downloaded again by its own installer. To move Capri herself, run her installer again and pick another folder.
 
 ### If she doesn't hear you
 

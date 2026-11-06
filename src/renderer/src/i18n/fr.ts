@@ -279,6 +279,36 @@ export const fr: Messages = {
   ob_storageDefault: 'Dossiers par défaut sur le disque système',
   ob_storageChange: 'Changer',
   ob_storageReset: 'Par défaut',
+
+  ob_moveTitle: "Déplacer ce qui est déjà installé ?",
+
+  ob_moveModels: "Ses modèles",
+
+  ob_moveWhisper: "Son audition (Whisper)",
+
+  ob_moveVoiceEnv: "Son environnement vocal",
+
+  ob_moveTools: "FFmpeg et outils",
+
+  ob_moveOllamaProgram: "Programme Ollama (téléchargé à nouveau)",
+
+  ob_moveTotal: "Total",
+
+  ob_moveFree: "Libre là-bas",
+
+  ob_moveNote: "Tout est d'abord copié, et les anciens fichiers ne sont supprimés qu'à la fin. Python reste où il est. Pour déplacer Capri elle-même, relance son installateur et choisis un autre dossier.",
+
+  ob_moveNoSpace: "Il n'y a pas assez d'espace libre sur ce disque.",
+
+  ob_moveBadFolder: "Ce dossier se trouve dans ce qui va être déplacé. Choisis-en un autre.",
+
+  ob_moveCancel: "Annuler",
+
+  ob_moveConfirm: "Déplacer",
+
+  ob_moveDone: "C'est fait. Elle utilise le nouvel emplacement.",
+
+  ob_moveFailed: "Le déplacement a échoué. Ce qui n'est pas terminé reste où c'était.",
   vs_monitor: 'Écran',
   vs_monitorMain: 'principal',
   vs_boredom: 'Elle peut s\'ennuyer : elle ouvre des onglets et de la musique toute seule quand tu ne dis rien',

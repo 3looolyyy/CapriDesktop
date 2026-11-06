@@ -237,15 +237,17 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.SETUP_GET_STORAGE, () => getStorageRoot())
+  // What moving there would take. Null if no folder was picked; nothing changes until it's confirmed
   ipcMain.handle(IPC_CHANNELS.SETUP_CHOOSE_STORAGE, async (_event, reset?: boolean) => {
-    if (reset) {
-      await setupService.changeStorage(null)
-      return null
-    }
+    if (reset) return setupService.planStorageMove(null)
     const picked = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    if (picked.canceled || !picked.filePaths[0]) return getStorageRoot()
-    await setupService.changeStorage(path.join(picked.filePaths[0], 'CapriData'))
-    return getStorageRoot()
+    if (picked.canceled || !picked.filePaths[0]) return null
+    const folder = picked.filePaths[0]
+    return setupService.planStorageMove(path.basename(folder).toLowerCase() === 'capridata' ? folder : path.join(folder, 'CapriData'))
+  })
+  ipcMain.handle(IPC_CHANNELS.SETUP_MOVE_STORAGE, async (_event, root: string | null) => {
+    const ok = await setupService.moveStorage(root, (s, line) => windowManager.broadcast(IPC_CHANNELS.SETUP_LOG, { step: s, line }))
+    return { ok, root: getStorageRoot(), status: await setupService.getStatus() }
   })
 
   ipcMain.handle(IPC_CHANNELS.ONBOARDING_OPEN, () => {
