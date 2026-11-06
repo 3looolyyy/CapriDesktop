@@ -1,3 +1,5 @@
+import { runMacSystemCommand } from '../../services/mac-system-service'
+import type { MacSystemAction } from '../../../shared/mac-system-commands'
 import {
   isMac,
   isLinux,
@@ -55,7 +57,17 @@ export interface ToolDefinition {
   }
 }
 
+export const MAC_SYSTEM_TOOL:ToolDefinition={
+  name:'mac_system',
+  description:'macOS only. Read battery/disk/OS info or system output volume; set/adjust output volume or mute/unmute; open a standard Finder folder or System Settings page. Execute requested sound changes with this tool instead of claiming read-only access. Does not alter Wi-Fi, Bluetooth, privacy grants, files or power state. Never use for Capri voice settings or coding examples.',
+  parameters:{type:'object',properties:{
+    action:{type:'string',description:'Native action to perform.',enum:['battery','storage','system-info','get-volume','set-volume','change-volume','mute','unmute','folder','settings']},
+    value:{type:'number',description:'For set-volume: 0–100 percent. For change-volume: signed adjustment, normally +/-10. Required for those two actions.'},
+    name:{type:'string',description:'For folder: downloads/documents/desktop/home. For settings: sound/display/displays/wifi/wi-fi/bluetooth/battery/keyboard/mouse/trackpad/accessibility/privacy/general.'}
+  },required:['action']}
+}
 export const CAPRI_TOOLS: ToolDefinition[] = [
+  ...(isMac ? [MAC_SYSTEM_TOOL] : []),
   {
     name: 'run_command',
     description: 'Execute a command in PowerShell / bash shell. Use for builds, tests, git, npm, or system inspection.',
@@ -363,6 +375,9 @@ export class ToolExecutor {
           return { success: true, output: lines.join('\n') || '(empty directory)' }
         }
 
+        case 'mac_system': {
+          return runMacSystemCommand(args as unknown as MacSystemAction)
+        }
         case 'open_application': {
           return await ToolExecutor.openApplication(args)
         }

@@ -4,7 +4,7 @@ Apple Silicon personal build. See [UPSTREAM-MAC-REVIEW.md](UPSTREAM-MAC-REVIEW.m
 
 ## Passing checks
 
-- 46 regression tests covering platform/updater routing, cloud vision/provider separation, credential-safe request metadata, Spotify selection/errors, placement/crop math, voice wake gating, microphone cleanup, screen-comment consent/lock gating, Mac command bounds, hotkeys, multilingual fixed requests and speech-cache relocation planning.
+- 47 regression tests covering platform/updater routing, cloud vision/provider separation, credential-safe request metadata, Spotify selection/errors, placement/crop math, voice wake gating, microphone cleanup, screen-comment consent/lock gating, Mac command bounds, hotkeys, multilingual fixed requests and speech-cache relocation planning.
 - TypeScript main/preload/renderer checks; Python voice-script syntax; Swift native helper build; production Electron arm64 package and signature verification.
 - Packaged read-only native queries for battery, disk space, OS version, local clock and system volume.
 - Offline synthetic speech transcription with a previously downloaded Whisper base model. Missing-model state in a fresh profile returns setup instructions; no model silently downloaded.

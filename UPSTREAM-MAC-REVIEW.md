@@ -26,7 +26,7 @@ Mac startup now adds installed Homebrew/Python locations to PATH for Finder/logi
 
 ## Validation and boundaries
 
-- 46 focused tests; TypeScript checks; Python syntax; native helper build; production arm64 build/package and signature verification.
+- 47 focused tests; TypeScript checks; Python syntax; native helper build; production arm64 build/package and signature verification.
 - Packaged read-only system checks: battery, disk, macOS version, clock and volume. No screenshot or cloud request in that check.
 - Offline synthetic speech test using the previously downloaded base model in the backup. The fresh active profile has no speech model: choose Set up voice recognition in Mac settings to install the desired model there. No model was silently restored/downloaded.
 - Migration tests verify dry-run planning/path selection and leave source data intact. A real external-disk migration and its interruption/rollback are not claimed tested.
@@ -40,3 +40,5 @@ Mac startup now adds installed Homebrew/Python locations to PATH for Finder/logi
 - [AppleScript system sound commands](https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html)
 
 On Mac, storage moves leave a standalone/shared Ollama library in place. Only model folders already managed under Capri’s selected storage root are eligible to move; a running standalone server must be quit first. Speech caches and Capri’s Python environment can be relocated independently.
+
+Natural system requests also expose a dedicated mac_system tool with bounded parameters; ordinary facts and coding examples do not receive it. The observed “set vol to 70 percent” read-only reply was a routing problem: abbreviated/punctuated volume commands now resolve locally, and cloud capability context describes the real Mac controls.

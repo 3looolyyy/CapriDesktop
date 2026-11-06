@@ -2,7 +2,7 @@ import { consciousnessService } from '../src/main/services/consciousness-service
 import { setStorageRoot, getStorageRoot } from '../src/main/services/storage-location'
 import { speechModelsDir } from '../src/main/services/app-paths'
 import { planMove } from '../src/main/services/storage-move'
-import { parseMacSystemCommand } from '../src/shared/mac-system-commands'
+import { parseMacSystemCommand, isMacSystemRequest } from '../src/shared/mac-system-commands'
 import { runMacSystemCommand } from '../src/main/services/mac-system-service'
 import { mockSystemVolume } from './native-mock'
 import { defaultHotkeys, normalizeHotkeys, clampGamingOpacity } from '../src/shared/hotkeys'
@@ -661,4 +661,15 @@ test('Mac storage migration does not take ownership of a standalone Ollama libra
    assert.equal(plan.items.some(item=>item.kind==='models'),false)
    assert.equal(readFileSync(path.join(shared,'manifests','library','example','latest'),'utf8'),'not a real model')
  } finally {setStorageRoot(null);if(old===undefined) delete process.env.OLLAMA_MODELS;else process.env.OLLAMA_MODELS=old}
+})
+
+
+test('abbreviated and flexible volume requests can reach native controls, not a read-only cloud answer',()=>{
+ assert.deepEqual(parseMacSystemCommand('set vol to 70 percent'),{action:'set-volume',value:70})
+ assert.deepEqual(parseMacSystemCommand('set. volume to69 percent'),{action:'set-volume',value:69})
+ assert.deepEqual(parseMacSystemCommand('turn down the volume'),{action:'change-volume',value:-10})
+ assert.equal(isMacSystemRequest('could you adjust my computer volume to 70 please'),true)
+ assert.equal(offerDesktopTools('darwin','cloud','could you adjust my computer volume to 70 please'),true)
+ assert.equal(isMacSystemRequest('write code to change volume'),false)
+ assert.equal(isMacSystemRequest('change your volume'),false)
 })

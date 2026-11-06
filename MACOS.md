@@ -64,7 +64,7 @@ Mac update checks open the upstream release page for manual updates. This person
 
 Supported macros: apps, URLs, music/media controls, ordinary companion game mode, speech and waits. Shell-command macros, Paint drawing, ShadowPlay and League/Cyberpunk integrations are unavailable on Mac. Windows/Linux runtime behavior remains untested.
 
-Validation: 46 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
+Validation: 47 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
 
 ## Native Mac compatibility update (1.0.12)
 
@@ -72,7 +72,7 @@ Current local time/date/day questions are answered from the device clock, includ
 
 Explicit Chrome, Firefox, Safari, Edge, Brave and Opera requests open the named installed browser; a query opens in that browser. Missing apps return a failure. Explorer/File Explorer resolves to Finder, Task Manager to Activity Monitor, Control Panel to System Settings, Notepad to TextEdit and calc to Calculator. Apps are asked to quit normally, allowing save prompts. The coding terminal uses a Unix shell on Mac.
 
-Validation: 46 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
+Validation: 47 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
 
 ## Upstream 1.0.4 / Mac revision 13
 

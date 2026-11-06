@@ -1,3 +1,4 @@
+import { isMacSystemRequest } from './mac-system-commands'
 /** Platform policy kept free of Electron so all OS branches can be regression tested. */
 export function platformCapabilities(platform: string, desktopAccess: boolean, screenAccess: boolean) {
   const mac = platform === 'darwin'
@@ -43,7 +44,7 @@ export function offerDesktopTools(platform: string, _model: string, prompt: stri
   if (platform !== 'darwin') return true
   const text=prompt.normalize('NFD').replace(/\p{Diacritic}/gu,'').trim()
     .replace(/^(?:(?:hey\s+)?capri[,!:\s]*|please\s+|(?:can|could|would)\s+you(?:\s+please)?\s+|(?:puedes|podes|por favor)\s+)+/i,'')
-  return /^(?:open|launch|start|close|quit|kill|play|pause|resume|skip|search|find|browse|google|look\s+up|create|build|write|edit|read|list|delete|remove|run|execute|install|draw|scan|capture|move|save|abre|abrir|cerra|cerrar|cierra|reproduce|reproducir|pausa|busca|buscar|crea|crear|escribe|escribir|lee|leer|lista|borra|borrar|ejecuta|instala|dibuja|escanea|guarda)\b/i.test(text)
+  return isMacSystemRequest(text) || /^(?:open|launch|start|close|quit|kill|play|pause|resume|skip|search|find|browse|google|look\s+up|create|build|write|edit|read|list|delete|remove|run|execute|install|draw|scan|capture|move|save|abre|abrir|cerra|cerrar|cierra|reproduce|reproducir|pausa|busca|buscar|crea|crear|escribe|escribir|lee|leer|lista|borra|borrar|ejecuta|instala|dibuja|escanea|guarda)\b/i.test(text)
 }
 
 export function scannerVisionMode(platform: string, cloud: boolean, localEnabled: boolean): 'cloud' | 'local' | 'disabled' {
