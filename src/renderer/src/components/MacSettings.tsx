@@ -1,6 +1,6 @@
 import type { DesktopPreferences } from '../../../shared/mac-types'
 import type { PlacementCommand } from '../../../shared/placement'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import type { PlatformStatus, MacPermission } from '../../../shared/mac-types'
 import type { SpotifySettings, SpotifyDevice } from '../../../main/services/spotify-service'
 
@@ -29,6 +29,9 @@ export const MacSettings: React.FC = () => {
   const [devices, setDevices] = useState<SpotifyDevice[]>([])
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [installingSpeech,setInstallingSpeech]=useState(false)
+  const [speechLog,setSpeechLog]=useState('')
+  const speechSetupRef=useRef(false)
   const [minutes,setMinutes]=useState(0)
   const [query, setQuery] = useState('')
   const [desktop,setDesktop]=useState<DesktopPreferences|null>(null)
@@ -48,7 +51,8 @@ export const MacSettings: React.FC = () => {
       void refresh().catch(() => {})
     }
     window.addEventListener('focus', focus)
-    return () => window.removeEventListener('focus', focus)
+    const unsubscribe=window.api.setup.onLog(({step,line})=>{if(speechSetupRef.current && ['python','whisper'].includes(step)) setSpeechLog(line)})
+    return () => {window.removeEventListener('focus', focus);unsubscribe()}
   }, [])
   if (status?.platform !== 'darwin') return null
   const run = async (fn: () => Promise<unknown>) => {
@@ -67,6 +71,48 @@ export const MacSettings: React.FC = () => {
   return (
     <section className="cp-frame p-4 space-y-4 select-text">
       <h2 className="cp-title text-xl">Mac settings</h2>
+      <div className="space-y-2">
+        <h3 className="font-semibold">Whisper · voice recognition / Hey Capri</h3>
+        <p className="text-xs">{desktop?.speechReady ? 'Selected speech model is installed.' : 'Install Whisper to enable push-to-talk and Hey Capri.'} Recognition stays on this device. Cloud chat is unchanged.</p>
+        <select aria-label="Speech recognition model" className="cp-input p-2 bg-[#170a0b]" disabled={busy} value={desktop?.speechModel || 'base'} onChange={e=>run(async()=>setDesktop(await window.api.desktop.configure({speechModel:e.target.value as 'base'|'small'})))}>
+          <option value="base">Whisper base · ~150 MB · lighter</option>
+          <option value="small">Whisper small · ~500 MB · more accurate</option>
+        </select>
+        <button
+          disabled={busy}
+          className={btn}
+          onClick={() =>
+            run(async () => {
+              speechSetupRef.current=true
+              setInstallingSpeech(true)
+              setSpeechLog('Checking voice dependencies…')
+              try {
+              const setup=await window.api.setup.getStatus()
+              if(!setup.ffmpeg) throw new Error('FFmpeg is missing. Install it with brew install ffmpeg, then click Install Whisper again.')
+              if(!setup.python.envReady) {
+                const env=await window.api.setup.run('python')
+                if(!env.ok) throw new Error('Install Python 3.11 first, then retry voice setup.')
+              }
+              const result = await window.api.setup.run('whisper')
+              setDesktop(await window.api.desktop.preferences())
+              setMessage(
+                result.ok
+                  ? 'Whisper is ready. Right-click Capri → Enable Hey Capri, or press ⌘⌥L.'
+                  : 'Speech model setup failed. Check the Python setup and setup log.',
+              )
+              setSpeechLog(result.ok ? 'Whisper installed and ready.' : 'Installation failed. You can retry this button.')
+              } catch(error) {setSpeechLog(error instanceof Error ? error.message : String(error));throw error}
+              finally {speechSetupRef.current=false;setInstallingSpeech(false)}
+            })
+          }
+        >
+          {installingSpeech ? 'Installing Whisper…' : desktop?.speechReady ? 'Repair Whisper' : `Install Whisper · ~${desktop?.speechModel==='small' ? '500' : '150'} MB`}
+        </button>
+        {speechLog && <p role="status" aria-live="polite" className="text-xs text-cyan-300 whitespace-pre-wrap break-words">{speechLog}</p>}
+        <p className="text-xs">
+          Creates the Python voice environment if needed and downloads only the selected speech model. No system packages are installed. Enable Hey Capri from the companion’s right-click menu (⌘⌥L); push-to-talk is ⌘⌥V. Say her name with every request.
+        </p>
+      </div>
       <div className="space-y-3 border-b border-[#633138] pb-4">
         <label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={desktop?.openAtLogin || false} disabled={busy || !desktop?.loginSupported} onChange={e=>run(async()=>setDesktop(await window.api.desktop.setOpenAtLogin(e.target.checked)))} />Open at Login</label>
         <p className="text-xs">Start Capri automatically when you sign in to your Mac. You can also manage this in System Settings → General → Login Items.</p>
@@ -130,39 +176,6 @@ export const MacSettings: React.FC = () => {
           Ollama is only needed for local chat/vision, not cloud mode or voice recognition. If you do not use Homebrew, see MACOS.md for manual alternatives.
           Capri creates its own Python environment when you select the Python step. Model downloads only start when
           selected below.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <h3 className="font-semibold">Voice recognition / Hey Capri</h3>
-        <p className="text-xs">{desktop?.speechReady ? 'Selected speech model is installed.' : 'Speech model not installed yet.'} Recognition stays on this device. Cloud chat is unchanged.</p>
-        <select aria-label="Speech recognition model" className="cp-input p-2 bg-[#170a0b]" disabled={busy} value={desktop?.speechModel || 'base'} onChange={e=>run(async()=>setDesktop(await window.api.desktop.configure({speechModel:e.target.value as 'base'|'small'})))}>
-          <option value="base">Whisper base · ~150 MB · lighter</option>
-          <option value="small">Whisper small · ~500 MB · more accurate</option>
-        </select>
-        <button
-          disabled={busy}
-          className={btn}
-          onClick={() =>
-            run(async () => {
-              const setup=await window.api.setup.getStatus()
-              if(!setup.python.envReady) {
-                const env=await window.api.setup.run('python')
-                if(!env.ok) throw new Error('Install Python 3.11 first, then retry voice setup.')
-              }
-              const result = await window.api.setup.run('whisper')
-              setDesktop(await window.api.desktop.preferences())
-              setMessage(
-                result.ok
-                  ? 'Speech model ready. Voice recognition now works offline.'
-                  : 'Speech model setup failed. Check the Python setup and setup log.',
-              )
-            })
-          }
-        >
-          {busy ? 'Setting up…' : desktop?.speechReady ? 'Repair voice setup' : 'Set up voice recognition'}
-        </button>
-        <p className="text-xs">
-          Creates the Python voice environment if needed and downloads only the selected speech model. No system packages are installed. Enable Hey Capri from the companion’s right-click menu (⌘⌥L); push-to-talk is ⌘⌥V. Say her name with every request.
         </p>
       </div>
       <label className="block text-sm">

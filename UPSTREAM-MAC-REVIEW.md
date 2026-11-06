@@ -28,7 +28,7 @@ Mac startup now adds installed Homebrew/Python locations to PATH for Finder/logi
 
 - 47 focused tests; TypeScript checks; Python syntax; native helper build; production arm64 build/package and signature verification.
 - Packaged read-only system checks: battery, disk, macOS version, clock and volume. No screenshot or cloud request in that check.
-- Offline synthetic speech test using the previously downloaded base model in the backup. The fresh active profile has no speech model: choose Set up voice recognition in Mac settings to install the desired model there. No model was silently restored/downloaded.
+- Offline synthetic speech test using the previously downloaded base model in the backup. The fresh active profile has no speech model: choose Install Whisper in Mac settings to install the desired model there. No model was silently restored/downloaded.
 - Migration tests verify dry-run planning/path selection and leave source data intact. A real external-disk migration and its interruption/rollback are not claimed tested.
 - No real user's screen uploaded for validation. Existing opt-in cloud comment behavior is retained; Mac proactive game/idle monologues remain disabled. Boredom actions only run if the user explicitly enables that separate option.
 - Physical multi-monitor/Retina, all microphone hardware/failure cases, all ten spoken languages, Windows/Linux runtime and public Gatekeeper/notarization behavior remain unverified.

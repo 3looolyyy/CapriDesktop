@@ -9,7 +9,7 @@ Personal Apple Silicon build. Intel Macs, older macOS releases and notarized pub
 3. Choose your language, name and AI provider. For a cloud provider, enter your own API key, API address and chat model. Vision has a separate image-capable model setting.
 4. Press Command–comma to open Mac settings. Enable only the permissions needed for the features you use.
 5. Voice recognition needs Python 3.11 and FFmpeg. If you use Homebrew: `brew install python@3.11 ffmpeg`. Capri does not install system packages automatically.
-6. In Mac settings, select Whisper base (~150 MB, lighter) or small (~500 MB), then Set up voice recognition. This prepares Capri’s Python environment and downloads the selected speech model. Speech recognition runs locally on CPU. Ollama is only required for local chat/vision.
+6. In Mac settings, select Whisper base (~150 MB, lighter) or small (~500 MB), then Install Whisper. This prepares Capri’s Python environment and downloads the selected speech model. Speech recognition runs locally on CPU. Ollama is only required for local chat/vision.
 
 ## Mac shortcuts and interactions
 

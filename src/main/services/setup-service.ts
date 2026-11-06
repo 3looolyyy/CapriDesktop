@@ -581,11 +581,14 @@ export class SetupService {
     this.busy = true
     try {
       switch (step) {
-        case 'whisper':
+        case 'whisper': {
           if (!isMac) return false
           if (!(await this.voiceEnvReady())) {log(step, 'Install the Python voice environment first.'); return false}
           log(step, 'Downloading the selected speech model (base about 150 MB; small about 500 MB). Future recognition runs offline on CPU.')
-          return (await run(venvPython(), [scriptPath('capri_voice.py'), 'prepare-whisper'], l => log(step, l), {env: {...process.env, CAPRI_VOICE_DIR: voiceDataDir(), CAPRI_WHISPER_DIR: speechModelsDir()}})) === 0
+          const ok = (await run(venvPython(), [scriptPath('capri_voice.py'), 'prepare-whisper'], l => log(step, l), {env: {...process.env, CAPRI_VOICE_DIR: voiceDataDir(), CAPRI_WHISPER_DIR: speechModelsDir()}})) === 0
+          if(ok) voiceService.restartWorker()
+          return ok
+        }
         case 'python': {
           const ok = await this.installVoiceEnv(log)
           // It may have started before Whisper was here, and it wouldn't notice on its own
