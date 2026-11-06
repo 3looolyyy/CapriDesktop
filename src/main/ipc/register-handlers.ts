@@ -1,3 +1,7 @@
+import { saveFeatures } from '../services/mac-feature-settings'
+import { scheduleScreenComments } from '../services/screen-comment-service'
+import { screen as desktopScreen } from 'electron'
+import { setLocalAIEnabled } from '../services/local-ai-policy'
 import { scriptPlayer } from '../services/script/script-player'
 import { getLlmSettings, listCloudModels, setLlmSettings, testCloudConnection, type LlmSettingsUpdate } from '../services/llm-gateway'
 import { setupService, SetupStep } from '../services/setup-service'
@@ -23,7 +27,38 @@ import { CYBERPUNK_GIGS, getNextGig } from '../services/game/adapters/cyberpunk/
 import { clipService } from '../services/clip-service'
 import { welcomeSpeech } from '../services/welcome-speech'
 
+import { platformStatus, requestPermission, openPermission } from '../services/mac-permissions'
+import { spotifyService } from '../services/spotify-service'
+import { isMac } from '../services/platform'
+
+import { desktopPreferences, setOpenAtLogin } from '../services/mac-preferences'
+import type { PlacementCommand } from '../../shared/placement'
 export function registerIpcHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_CONFIGURE,(_event,update)=>{
+    if(!isMac || !update || typeof update!=='object') throw new Error('Invalid Mac settings')
+    saveFeatures(update)
+    if(update.speechModel!==undefined) voiceService.stopServer()
+    scheduleScreenComments()
+    return desktopPreferences()
+  })
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_PREFERENCES,()=>desktopPreferences())
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_LOGIN,(_event,enabled)=>setOpenAtLogin(enabled))
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_PLACE,(_event,target:PlacementCommand)=>{
+    if (!isMac || !['here','roam','bottom','bottom-left','bottom-right','top','top-left','top-right','left','right','center'].includes(target)) throw new Error('Invalid desktop position')
+    if (target==='roam') roamingManager.start(true); else roamingManager.pinPosition(target)
+    return desktopPreferences()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.PLATFORM_STATUS, () => platformStatus())
+  ipcMain.handle(IPC_CHANNELS.PLATFORM_PERMISSION, (_e, permission) => requestPermission(permission))
+  ipcMain.handle(IPC_CHANNELS.PLATFORM_OPEN_PERMISSION, (_e, permission) => openPermission(permission))
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_SETTINGS, () => spotifyService.settings())
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_CONFIGURE, (_e, settings) => { if (!isMac) throw new Error('Mac-only setting'); return spotifyService.configure(settings) })
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_CONNECT, () => { if (!isMac) throw new Error('Mac-only setting'); return spotifyService.connect() })
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_DISCONNECT, () => spotifyService.disconnect())
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_DEVICES, () => spotifyService.devices())
+  ipcMain.handle(IPC_CHANNELS.SPOTIFY_PLAY, (_e, query) => { if (!isMac || typeof query !== 'string' || query.length > 500) throw new Error('Invalid Spotify query'); return spotifyService.play(query) })
+
   // Deck window visibility
   ipcMain.handle(IPC_CHANNELS.DECK_TOGGLE, () => {
     return windowManager.toggleDeck()
@@ -216,6 +251,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SETUP_STATUS, () => setupService.getStatus())
 
   ipcMain.handle(IPC_CHANNELS.SETUP_RUN, async (_event, step: SetupStep) => {
+    if (!['python','ffmpeg','ollama','model','persona','whisper'].includes(step)) throw new Error('Unknown setup step')
     const ok = await setupService.run(step, (s, line) => windowManager.broadcast(IPC_CHANNELS.SETUP_LOG, { step: s, line }))
     return { ok, status: await setupService.getStatus() }
   })
@@ -520,6 +556,15 @@ export function registerIpcHandlers(): void {
     return scannerService.getStatus()
   })
 
+  ipcMain.handle(IPC_CHANNELS.SCANNER_LOCAL_AI, (_event,enabled:boolean) => setLocalAIEnabled(enabled))
+  ipcMain.handle(IPC_CHANNELS.SCANNER_FIT_SCREEN, () => {
+    const win=windowManager.getScannerWindow()
+    if (!win || win.isDestroyed()) return null
+    const bounds=desktopScreen.getDisplayMatching(win.getBounds()).workArea
+    windowManager.setScannerBounds(bounds)
+    return win.getBounds()
+  })
+
   ipcMain.handle(IPC_CHANNELS.SCANNER_SET_BOUNDS, (_event, bounds) => {
     windowManager.setScannerBounds(bounds)
     return true
@@ -548,6 +593,7 @@ export function registerIpcHandlers(): void {
 
   // Cyberpunk 2077 Integration
   ipcMain.handle(IPC_CHANNELS.CYBERPUNK_MARK_POI, async (_event, target?: string) => {
+    if (isMac) return false
     return cyberpunkAdapter.sendCommand({
       action: 'mark_closest',
       target: target || 'ripperdoc'
@@ -555,6 +601,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.CYBERPUNK_CLEAR_POI, async () => {
+    if (isMac) return false
     await cyberpunkAdapter.sendCommand({
       action: 'clear_marker'
     })
@@ -562,6 +609,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.CYBERPUNK_MARK_GIG, async (_event, gigId?: string) => {
+    if (isMac) return false
     const gig = gigId ? CYBERPUNK_GIGS.find((g) => g.id === gigId) || getNextGig() : getNextGig()
     return await cyberpunkAdapter.markGig(gig)
   })

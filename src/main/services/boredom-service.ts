@@ -1,4 +1,5 @@
 import { shell } from 'electron'
+import { isMac } from './platform'
 import { agentManager } from '../agents/agent-manager'
 import { scannerService } from './scanner-service'
 import { consciousnessService } from './consciousness-service'
@@ -66,6 +67,7 @@ export class BoredomService {
   }
 
   public start(): void {
+    if (isMac) return // Personal Mac: never launch unsolicited music, tabs or searches.
     if (this.isRunning) return
 
     // Never start if already in Gaming Mode or in an active game

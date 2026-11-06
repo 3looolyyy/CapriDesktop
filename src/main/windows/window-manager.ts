@@ -9,7 +9,7 @@ import { ollamaService } from '../services/ollama-service'
 import { voiceService } from '../services/voice-service'
 import { consciousnessService } from '../services/consciousness-service'
 import { scannerService } from '../services/scanner-service'
-import { isLinux, linuxCursorPosition } from '../services/platform'
+import { isMac, isLinux, linuxCursorPosition } from '../services/platform'
 
 export class WindowManager {
   private companionWin: BrowserWindow | null = null
@@ -17,6 +17,7 @@ export class WindowManager {
   private deckWin: BrowserWindow | null = null
   private scannerWin: BrowserWindow | null = null
   private isGamingMode = false
+  private companionIgnoresMouse = false
   private savedGamingPosition: { x: number; y: number } | null = null
   private gamingKeepAliveInterval: NodeJS.Timeout | null = null
   private gamingModeListeners: Array<(enabled: boolean) => void> = []
@@ -133,10 +134,10 @@ export class WindowManager {
 
     // Down Arrow (Flecha hacia abajo) - dedicated push/toggle hotkey to speak with Capri
     try {
-      globalShortcut.register('Down', () => {
+      if (!isMac) globalShortcut.register('Down', () => {
         this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_RECORDING)
       })
-      console.log('[WindowManager] Registered global shortcut "Down" (Flecha abajo) for voice command')
+      if (!isMac) console.log('[WindowManager] Registered global shortcut "Down" for voice command')
     } catch (err) {
       console.warn('[WindowManager] Failed to register global shortcut Down:', err)
     }
@@ -146,7 +147,7 @@ export class WindowManager {
 
     // Right Arrow (Flecha derecha) - toggle Always Listening mode
     try {
-      globalShortcut.register('Right', () => {
+      globalShortcut.register(isMac ? 'CommandOrControl+Alt+L' : 'Right', () => {
         this.broadcast(IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING)
       })
     } catch (err) {
@@ -154,11 +155,11 @@ export class WindowManager {
     }
 
     // Linux can't report Ctrl while Capri is click-through, so this replaces Ctrl + hover in Gaming Mode
-    if (isLinux) {
+    if (isLinux || isMac) {
       try {
         globalShortcut.register('CommandOrControl+Alt+G', () => {
           if (!this.isGamingMode || !this.companionWin || this.companionWin.isDestroyed()) return
-          this.setCompanionClickThrough(!this.mouseForwardTimers.has(this.companionWin))
+          this.setCompanionClickThrough(isMac ? !this.companionIgnoresMouse : !this.mouseForwardTimers.has(this.companionWin))
         })
       } catch (err) {
         console.warn('[WindowManager] Failed to register global shortcut Ctrl+Alt+G:', err)
@@ -167,7 +168,7 @@ export class WindowManager {
 
     // Left Arrow (Flecha izquierda) - open/close Capri's chat (same as Ctrl + Click on her)
     try {
-      globalShortcut.register('Left', () => {
+      globalShortcut.register(isMac ? 'CommandOrControl+Alt+C' : 'Left', () => {
         this.broadcast(IPC_CHANNELS.COMPANION_TOGGLE_CHAT)
       })
     } catch (err) {
@@ -269,9 +270,10 @@ export class WindowManager {
     roamingManager.resume()
 
     // always ensure capri IS full body (standing, walking, or sitting), never eyes
-    const fallbackState = roamingManager.getStatus().isRoaming ? 'walking' : 'standing'
+    const fallbackState = roamingManager.isPositionPinned() ? 'idle_front' : roamingManager.getStatus().isRoaming ? 'walking' : 'standing'
     this.broadcast(IPC_CHANNELS.COMPANION_STATE_CHANGED, fallbackState)
     this.broadcast(IPC_CHANNELS.DECK_STATUS, false)
+    roamingManager.restorePinnedPlacement()
   }
 
   public setTabMode(
@@ -282,7 +284,7 @@ export class WindowManager {
   ): boolean {
     if (!this.companionWin || this.companionWin.isDestroyed()) return false
 
-    const primaryDisplay = screen.getPrimaryDisplay()
+    const primaryDisplay = isMac ? screen.getDisplayMatching(windowRect ? {x: windowRect.left, y: windowRect.top, width: windowRect.width, height: windowRect.height} : this.companionWin.getBounds()) : screen.getPrimaryDisplay()
     const { workArea } = primaryDisplay
 
     if (enabled) {
@@ -347,7 +349,7 @@ export class WindowManager {
     sittingPose: 'perch' | 'front' = 'perch'
   ): void {
     if (!this.companionWin || this.companionWin.isDestroyed()) return
-    const primaryDisplay = screen.getPrimaryDisplay()
+    const primaryDisplay = isMac ? screen.getDisplayMatching(windowRect ? {x: windowRect.left, y: windowRect.top, width: windowRect.width, height: windowRect.height} : this.companionWin.getBounds()) : screen.getPrimaryDisplay()
     const { workArea } = primaryDisplay
     const width = 360
     const height = 360
@@ -382,7 +384,8 @@ export class WindowManager {
    */
   public setCompanionClickThrough(ignore: boolean): void {
     if (!this.companionWin || this.companionWin.isDestroyed()) return
-    const effective = ignore && this.isGamingMode
+    const effective = ignore && (this.isGamingMode || isMac)
+    this.companionIgnoresMouse = effective
     if (effective) {
       this.companionWin.setIgnoreMouseEvents(true, { forward: true })
     } else {
@@ -494,6 +497,7 @@ export class WindowManager {
       this.broadcast(IPC_CHANNELS.COMPANION_SET_GAMING_MODE, false)
       this.broadcast(IPC_CHANNELS.COMPANION_STATE_CHANGED, 'standing')
       console.log('[WindowManager] Gaming Mode DEACTIVATED')
+      roamingManager.restorePinnedPlacement()
     }
   }
 

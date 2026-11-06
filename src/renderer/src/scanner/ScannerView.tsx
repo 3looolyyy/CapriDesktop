@@ -9,6 +9,8 @@ import {
 type ResizeDirection = 'move' | 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se'
 
 export const ScannerView: React.FC = () => {
+  const [visionMode,setVisionMode]=useState<'cloud'|'local'|'disabled'>('disabled')
+  const [localAI, setLocalAI] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [isContinuous, setIsContinuous] = useState(false)
   const [scanState, setScanState] = useState<'idle' | 'scanning' | 'result' | 'error'>('idle')
@@ -36,6 +38,8 @@ export const ScannerView: React.FC = () => {
   useEffect(() => {
     // Sync initial status from main process
     window.api.scanner.getStatus().then((status) => {
+      setVisionMode(status.visionMode || 'local')
+      setLocalAI(status.localAIEnabled !== false)
       setIsScanning(status.isScanning)
       setIsContinuous(status.isContinuous)
       if (status.bounds) {
@@ -286,8 +290,7 @@ export const ScannerView: React.FC = () => {
     e.stopPropagation()
     try {
       const next = !isContinuous
-      setIsContinuous(next)
-      await window.api.scanner.setContinuous(next)
+      setIsContinuous(await window.api.scanner.setContinuous(next))
     } catch (err) {
       console.error('[ScannerView] Toggle continuous error:', err)
     }
@@ -335,7 +338,7 @@ export const ScannerView: React.FC = () => {
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[11px] font-bold tracking-wider">
             <span className="text-cyan-300">☵</span>
-            <span className="truncate">CAPRI // NEURAL SCANNER</span>
+            <span className="truncate">SCANNER</span>
           </div>
           <span className="text-[10px] font-mono text-cyan-500/70 border border-cyan-500/30 px-1 py-0.2 rounded bg-cyan-950/30">
             {dimensions.width}×{dimensions.height}
@@ -344,6 +347,9 @@ export const ScannerView: React.FC = () => {
 
         {/* Right: Scan, Continuous, & Close Buttons */}
         <div className="flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
+          <button title="Fit the scanner within this display's usable area" className="px-2 py-1 border border-cyan-500 text-cyan-300 rounded text-[10px] whitespace-nowrap" onClick={async()=>{const b=await window.api.scanner.fitScreen();if(b){boundsRef.current=b;setDimensions({width:b.width,height:b.height})}}}>Fit screen</button>
+          {visionMode === 'cloud' && <span className="text-[10px] text-cyan-300 whitespace-nowrap" title="Only explicit scans send images to your selected cloud provider">Cloud vision</span>}
+          {!localAI && visionMode !== 'cloud' && <button className="px-2 py-1 border border-amber-500 text-amber-300 rounded text-[10px]" title="Allow local AI models to run again; scanning can use substantial memory" onClick={async()=>setLocalAI(await window.api.scanner.setLocalAIEnabled(true))}>Enable local AI</button>}
           {/* Scan Button */}
           <button
             onClick={handleTriggerScan}
@@ -361,13 +367,14 @@ export const ScannerView: React.FC = () => {
 
           {/* Continuous Mode Toggle */}
           <button
+            disabled={visionMode === 'cloud'}
             onClick={handleToggleContinuous}
             className={`px-2 py-1 rounded font-mono text-[10px] font-semibold tracking-wide transition-all duration-200 border cursor-pointer ${
               isContinuous
                 ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                 : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
             }`}
-            title="Continuous mode: auto-scans when frame content changes"
+            title={visionMode === 'cloud' ? 'Cloud vision uses explicit scans only; background uploading is disabled.' : 'Continuous mode: auto-scans when frame content changes'}
           >
             {isContinuous ? '● LIVE ON' : '○ LIVE OFF'}
           </button>

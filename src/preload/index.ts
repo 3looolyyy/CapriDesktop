@@ -1,3 +1,5 @@
+import type { DesktopPreferences } from '../shared/mac-types'
+import type { PlacementCommand } from '../shared/placement'
 import type { LlmPublicSettings, LlmSettingsUpdate } from '../main/services/llm-gateway'
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import {
@@ -33,7 +35,31 @@ ipcRenderer.on(IPC_CHANNELS.WINDOW_FORWARDED_MOUSE, (_event, m: { x: number; y: 
   }
 })
 
+import type { PlatformStatus, MacPermission } from '../shared/mac-types'
+import type { SpotifySettings, SpotifyMethod, SpotifyDevice } from '../main/services/spotify-service'
+
 const api = {
+  desktop: {
+    onOpenSettings: (callback:()=>void):(()=>void) => {const listener=()=>callback();ipcRenderer.on('desktop:open-settings',listener);return ()=>{ipcRenderer.removeListener('desktop:open-settings',listener)}},
+    configure: (update:{screenCommentMinutes?:number;speechModel?:'base'|'small'}):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_CONFIGURE,update),
+    preferences: ():Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_PREFERENCES),
+    setOpenAtLogin: (enabled:boolean):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_LOGIN,enabled),
+    place: (target:PlacementCommand):Promise<DesktopPreferences> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_PLACE,target)
+  },
+  platform: {
+    status: (): Promise<PlatformStatus> => ipcRenderer.invoke(IPC_CHANNELS.PLATFORM_STATUS),
+    requestPermission: (permission: MacPermission): Promise<PlatformStatus> => ipcRenderer.invoke(IPC_CHANNELS.PLATFORM_PERMISSION, permission),
+    openPermission: (permission: MacPermission): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.PLATFORM_OPEN_PERMISSION, permission)
+  },
+  spotify: {
+    settings: (): Promise<SpotifySettings> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_SETTINGS),
+    configure: (settings: {method?: SpotifyMethod; clientId?: string; deviceId?: string}): Promise<SpotifySettings> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_CONFIGURE, settings),
+    connect: (): Promise<{success: boolean; output: string}> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_CONNECT),
+    disconnect: (): Promise<SpotifySettings> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_DISCONNECT),
+    devices: (): Promise<SpotifyDevice[]> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_DEVICES),
+    play: (query: string): Promise<{success: boolean; output: string}> => ipcRenderer.invoke(IPC_CHANNELS.SPOTIFY_PLAY, query)
+  },
+
   // Deck Window Controls
   deck: {
     toggle: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.DECK_TOGGLE),
@@ -352,6 +378,8 @@ const api = {
 
   // Neural Scanner Mode (Screen Region Vision)
   scanner: {
+    fitScreen: (): Promise<ScannerBounds | null> => ipcRenderer.invoke(IPC_CHANNELS.SCANNER_FIT_SCREEN),
+    setLocalAIEnabled: (enabled:boolean): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SCANNER_LOCAL_AI,enabled),
     open: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SCANNER_OPEN),
     close: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SCANNER_CLOSE),
     toggle: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SCANNER_TOGGLE),

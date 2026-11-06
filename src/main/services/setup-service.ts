@@ -1,3 +1,4 @@
+import { recommendedLocalModel } from '../../shared/platform-policy'
 /**
  * First-run setup: Python voice environment, FFmpeg, Ollama and the local models.
  * Downloads go through winget / pip and stream their output to the onboarding window.
@@ -12,8 +13,8 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { spawn, execFile } from 'child_process'
-import { localFfmpegPath, pythonEnvDir, scriptPath, toolsDir, venvPython } from './app-paths'
-import { findOnPath, isWindows, linuxInstallCommand, linuxPackageManager } from './platform'
+import { voiceDataDir, localFfmpegPath, pythonEnvDir, scriptPath, toolsDir, venvPython } from './app-paths'
+import { findOnPath, isMac, isWindows, linuxInstallCommand, linuxPackageManager } from './platform'
 import { ollamaService } from './ollama-service'
 import { consciousnessService } from './consciousness-service'
 import { isCloudMode } from './llm-gateway'
@@ -21,7 +22,7 @@ import { windowManager } from '../windows/window-manager'
 import { localizeLine } from '../../shared/lines'
 import { getUserName } from './user-profile'
 
-export type SetupStep = 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona'
+export type SetupStep = 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona' | 'whisper'
 
 export interface SetupStatus {
   python: { systemPython: string | null; envReady: boolean }
@@ -29,12 +30,13 @@ export interface SetupStatus {
   ollama: { installed: boolean; running: boolean; models: string[] }
   model: boolean
   persona: boolean
+  recommendedModel: string
 }
 
-export const DEFAULT_MODEL = 'qwen2.5-coder:7b'
+export const DEFAULT_MODEL = recommendedLocalModel(process.platform, os.totalmem())
 
 // Linux distros move to new versions quickly: the voice packages were checked on 3.14 there
-const SUPPORTED_PYTHON = isWindows ? /Python 3\.(1[0-3])/ : /Python 3\.(1[0-4])/
+const SUPPORTED_PYTHON = isMac ? /Python 3\.11\./ : isWindows ? /Python 3\.(1[0-3])/ : /Python 3\.(1[0-4])/
 
 /** Direct-download fallbacks used when winget is not available */
 const PYTHON_INSTALLER_URL = 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe'
@@ -89,6 +91,13 @@ export class SetupService {
 
   /** A real Python 3.10-3.13 (the Microsoft Store "python" alias doesn't count) */
   private async findSystemPython(): Promise<string | null> {
+    if (isMac) {
+      for (const py of [findOnPath('python3.11'), '/opt/homebrew/opt/python@3.11/bin/python3.11', '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11'].filter((p): p is string => !!p)) {
+        const result = await quick(py, ['--version'])
+        if (result.ok && SUPPORTED_PYTHON.test(result.out)) return py
+      }
+      return null
+    }
     if (!isWindows) {
       for (const cmd of ['python3.12', 'python3.11', 'python3.13', 'python3.10', 'python3.14', 'python3', 'python']) {
         const r = await quick(cmd, ['--version'])
@@ -209,7 +218,8 @@ export class SetupService {
       ffmpeg,
       ollama: { installed, running: tags.running, models: tags.models },
       model: tags.models.some((m) => m.startsWith(DEFAULT_MODEL)),
-      persona: tags.models.some((m) => m.toLowerCase().startsWith('capri'))
+      persona: tags.models.some((m) => m.toLowerCase().startsWith('capri')),
+      recommendedModel: DEFAULT_MODEL
     }
   }
 
@@ -356,9 +366,18 @@ export class SetupService {
     this.busy = true
     try {
       switch (step) {
+        case 'whisper':
+          if (!isMac) return false
+          if (!(await this.voiceEnvReady())) {log(step, 'Install the Python voice environment first.'); return false}
+          log(step, 'Downloading the selected speech model (base about 150 MB; small about 500 MB). Future recognition runs offline on CPU.')
+          return (await run(venvPython(), [scriptPath('capri_voice.py'), 'prepare-whisper'], l => log(step, l), {env: {...process.env, CAPRI_VOICE_DIR: voiceDataDir(), CAPRI_WHISPER_DIR: path.join(app.getPath('userData'), 'speech-models')}})) === 0
         case 'python':
           return await this.installVoiceEnv(log)
         case 'ffmpeg':
+          if (isMac) {
+            if (!(await this.hasFfmpeg())) log(step, 'Install FFmpeg yourself: brew install ffmpeg. Then refresh setup.')
+            return this.hasFfmpeg()
+          }
           if (!isWindows) {
             if (!(await this.hasFfmpeg())) await this.installFfmpegLinux(log)
             return this.hasFfmpeg()
@@ -367,6 +386,10 @@ export class SetupService {
           if (!(await this.hasFfmpeg())) await this.installFfmpegDirect(log)
           return this.hasFfmpeg()
         case 'ollama': {
+          if (isMac) {
+            if (!ollamaService.findOllamaBinary()) { log(step, 'Install Ollama from https://ollama.com/download/mac, then run this step again.'); return false }
+            return (await ollamaService.ensureRunning()).running
+          }
           if (!isWindows) {
             if (!ollamaService.findOllamaBinary()) await this.installOllamaLinux(log)
           } else {
@@ -391,6 +414,7 @@ export class SetupService {
 
   private async installVoiceEnv(log: Logger, mayAskForPassword = true): Promise<boolean> {
     let sys = await this.findSystemPython()
+    if (!sys && isMac) { log('python', 'Install Python yourself: brew install python@3.11. Then run this step again.'); return false }
     if (!sys) {
       log('python', 'Python 3.11 not found, installing it...')
       if (isWindows) {
@@ -423,7 +447,7 @@ export class SetupService {
     }
     if (!(await envUsable())) {
       let created = await createEnv()
-      if (!created && !isWindows && mayAskForPassword) {
+      if (!created && !isWindows && !isMac && mayAskForPassword) {
         log('python', 'This Python has no venv module, installing it...')
         if (await this.installLinuxPackages('python', 'python', log)) created = await createEnv()
       }
@@ -451,7 +475,7 @@ export class SetupService {
       return false
     }
     await ollamaService.ensureRunning()
-    log('model', `ollama pull ${model} (about 4.7 GB)`)
+    log('model', `ollama pull ${model} (${model === 'qwen3:1.7b' ? 'about 1.4 GB' : 'about 4.7 GB'})`)
     const code = await run(cli, ['pull', model], (l) => log('model', l))
     return code === 0
   }
@@ -465,7 +489,8 @@ export class SetupService {
     }
     const template = fs.readFileSync(scriptPath('Modelfile.capri'), 'utf-8')
     const modelfile = path.join(os.tmpdir(), 'capri.Modelfile')
-    fs.writeFileSync(modelfile, template.replace(/\{name\}/g, getUserName()), 'utf-8')
+    const content = isMac ? template.replace(/^FROM\s+.+$/m, `FROM ${DEFAULT_MODEL}`) : template
+    fs.writeFileSync(modelfile, content.replace(/\{name\}/g, getUserName()), 'utf-8')
     log('persona', `ollama create capri (persona for ${getUserName()})`)
     const code = await run(cli, ['create', 'capri', '-f', modelfile], (l) => log('persona', l))
     return code === 0

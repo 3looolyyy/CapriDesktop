@@ -1,4 +1,5 @@
 import {
+  isMac,
   isLinux,
   isWindows,
   killProcesses,
@@ -23,6 +24,8 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { exec } from 'child_process'
 import { shell } from 'electron'
+import { launchMacApp, quitMacApp } from '../../services/mac-desktop'
+import { spotifyService } from '../../services/spotify-service'
 import { clipService } from '../../services/clip-service'
 
 /** Containers and binary formats: handling them as text destroys them for good */
@@ -632,6 +635,12 @@ export class ToolExecutor {
     }
 
     try {
+      // Named browsers must open that Mac app, not silently open the default browser.
+      if(isMac && /^(?:google chrome|chrome|firefox|safari|microsoft edge|edge|msedge|brave|brave browser|opera|opera gx|apple music)$/.test(target.replace(/\.exe$/i,''))) {
+        const url=rawUrl || (rawQuery ? `https://www.google.com/search?q=${encodeURIComponent(rawQuery)}` : undefined)
+        const ok=await launchMacApp(rawTarget,url)
+        return {success:ok,output:ok ? `Opened ${rawTarget}${rawQuery ? ` with search: ${rawQuery}` : ''}.` : `Could not find or open ${rawTarget} on this Mac.`}
+      }
       // Direct Web URLs
       if (/^https?:\/\//i.test(rawTarget)) {
         await shell.openExternal(rawTarget)
@@ -673,6 +682,12 @@ export class ToolExecutor {
             ? `Playing "${query}" on YouTube: ${finalUrl}`
             : 'Launched YouTube in your browser.'
         }
+      }
+
+      if (isMac && !/spotify|musica|music|cancion|browser|chrome|opera|google|navegador/.test(target)) {
+        if (/league|cyberpunk|valorant|\blol\b/.test(target)) return {success: false, output: 'Game integrations are not supported in this Mac release.'}
+        const ok = await launchMacApp(rawTarget)
+        return {success: ok, output: ok ? `Opened ${rawTarget}.` : `Could not find or open ${rawTarget} on this Mac.`}
       }
 
       // OBS Studio
@@ -766,6 +781,7 @@ export class ToolExecutor {
           return await ToolExecutor.mediaControl('next')
         }
 
+        if (isMac) return spotifyService.play(query)
         if (isLinux) return await ToolExecutor.linuxSpotify(query)
 
         const isChangeRequested =
@@ -923,6 +939,10 @@ export class ToolExecutor {
 
     const target = rawTarget.toLowerCase()
 
+    if (isMac) {
+      try { const ok = await quitMacApp(rawTarget); return {success: ok, output: ok ? `Asked ${rawTarget} to quit. It may ask you to save your work.` : `${rawTarget} is not running or could not be asked to quit.`} }
+      catch (error) { return {success: false, output: String(error)} }
+    }
     try {
       // Check known game process list first (e.g. LoL, Cyberpunk, Palworld, Roblox, Valorant)
       const gameProcesses = this.resolveGameProcesses(target)
@@ -1060,6 +1080,7 @@ export class ToolExecutor {
 
   /** Title of Spotify's main window ('' while it's still loading or closed) */
   private static spotifyWindowTitle(): Promise<string> {
+    if (isMac) return spotifyService.status().then(s => s.title)
     if (isLinux) return linuxSpotifyTitle()
     return new Promise((resolve) => {
       exec(
@@ -1089,6 +1110,7 @@ export class ToolExecutor {
   public static async mediaControl(
     action: 'next' | 'prev' | 'play' | 'pause' | 'play_pause' = 'next'
   ): Promise<{ success: boolean; output: string }> {
+    if (isMac) return spotifyService.control(action)
     if (isLinux) {
       return (await linuxMediaControl(action))
         ? { success: true, output: `Spotify: ${action} done.` }
@@ -1125,6 +1147,7 @@ export class ToolExecutor {
   }
 
   public static async getMediaStatus(): Promise<{ isPlaying: boolean; title: string }> {
+    if (isMac) return spotifyService.status()
     if (isLinux) return linuxMediaStatus()
     const mediaScript = scriptPath('media_controller.ps1')
 

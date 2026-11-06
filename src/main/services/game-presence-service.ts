@@ -1,3 +1,4 @@
+import { isMac } from './platform'
 /**
  * Notices any game in the foreground, puts Capri in Gaming Mode and, every so often, has her
  * comment on that game. The foreground window comes from a PowerShell script on Windows and from
@@ -70,6 +71,7 @@ export class GamePresenceService {
   private recent: string[] = []
 
   public start(): void {
+    if (isMac) return // Keep the personal Mac companion quiet unless addressed. 
     if (this.timer || (!isWindows && !isLinux)) return
     this.timer = setInterval(() => void this.tick(), POLL_MS)
     void this.tick()

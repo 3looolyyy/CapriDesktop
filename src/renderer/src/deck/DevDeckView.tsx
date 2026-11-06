@@ -1,3 +1,4 @@
+import { MacSettings } from '../components/MacSettings'
 import React, { useState, useEffect } from 'react'
 import { CapriCommandCenter } from './CapriCommandCenter'
 import { CodeEditorView } from './CodeEditorView'
@@ -22,10 +23,13 @@ import {
   Languages
 } from 'lucide-react'
 
-type DeckTab = 'chat' | 'editor'
+type DeckTab = 'chat' | 'editor' | 'mac'
 
 export const DevDeckView: React.FC = () => {
+  const [isMac, setIsMac] = useState(false)
+  useEffect(() => {window.api.platform.status().then(s => setIsMac(s.platform === 'darwin'))}, [])
   const [activeTab, setActiveTab] = useState<DeckTab>('chat')
+  useEffect(()=>window.api.desktop.onOpenSettings(()=>setActiveTab('mac')),[])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false)
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false)
@@ -81,10 +85,11 @@ export const DevDeckView: React.FC = () => {
 
   return (
     <div className="cp-vars cp-root w-screen h-screen flex flex-col bg-[#100607] text-stone-200 border border-[#381a1b] overflow-hidden select-none">
+
       {/* Top bar */}
       <div
         className="h-10 bg-[#170a0b] border-b border-[#311718] flex items-center justify-between px-3 shrink-0"
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        style={{ WebkitAppRegion: 'drag', ...(isMac ? {paddingLeft:90, fontFamily:'-apple-system, BlinkMacSystemFont, sans-serif'} : {}) } as React.CSSProperties}
       >
         {/* Left: App title, status, and Project/Repo selector */}
         <div className="flex items-center gap-2 text-[14px]">
@@ -239,6 +244,7 @@ export const DevDeckView: React.FC = () => {
           </button>
 
           <button
+            style={isMac ? {display:'none'} : undefined}
             onClick={handleMinimize}
             className="p-1 text-stone-400 hover:text-white hover:bg-stone-800 rounded-none transition-colors"
             title={t('deck_minimize')}
@@ -247,6 +253,7 @@ export const DevDeckView: React.FC = () => {
           </button>
 
           <button
+            style={isMac ? {display:'none'} : undefined}
             onClick={handleClose}
             className="p-1 text-stone-400 hover:text-red-400 hover:bg-red-950/40 rounded-none transition-colors"
             title={t('close')}
@@ -260,7 +267,10 @@ export const DevDeckView: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {activeTab === 'chat' && <CapriCommandCenter />}
         {activeTab === 'editor' && <CodeEditorView />}
+        {activeTab === 'mac' && <div className="flex-1 overflow-y-auto p-6"><MacSettings /></div>}
       </div>
+
+      {isMac && <div className="h-9 shrink-0 border-t border-[#381a1b] flex items-center justify-between px-4"><span className="cp-label">Apple Silicon</span><button className="cp-btn-ghost text-sm" onClick={() => setActiveTab(activeTab === 'mac' ? 'chat' : 'mac')}>Mac & Spotify</button></div>}
 
       {/* Settings Modal */}
       {isSettingsOpen && (

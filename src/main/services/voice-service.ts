@@ -6,6 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import os from 'os'
 import { app } from 'electron'
+import { isMac } from './platform'
 import { consciousnessService } from './consciousness-service'
 import { ollamaService } from './ollama-service'
 function loadEnv(): void {
@@ -81,6 +82,7 @@ export class VoiceService {
   /** Tells capri_voice.py where the (writable) voice config, keys and audio cache live */
   private pythonEnv(): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env, CAPRI_VOICE_DIR: voiceDataDir(), CAPRI_ENV_FILE: envFilePath(), PYTHONIOENCODING: 'utf-8' }
+    if (isMac) env.CAPRI_WHISPER_DIR = path.join(app.getPath('userData'), 'speech-models')
     const ffmpeg = localFfmpegPath()
     if (ffmpeg && !env.CAPRI_FFMPEG) env.CAPRI_FFMPEG = ffmpeg
     return env
@@ -110,6 +112,7 @@ export class VoiceService {
         stdio: ['pipe', 'pipe', 'pipe']
       })
 
+      this.sttWorker.stdin?.on('error', err => this.drainQueueWithError(err.message))
       this.sttWorker.stdout?.on('data', (chunk) => {
         this.workerLineBuffer += chunk.toString()
         const lines = this.workerLineBuffer.split('\n')
@@ -240,6 +243,8 @@ export class VoiceService {
           env: this.pythonEnv()
         })
 
+        proc.once('error', err => resolve({success: false, error: `Voice engine could not start: ${err.message}. Run setup to install Python and voice dependencies.`}))
+
         let stdout = ''
         let stderr = ''
 
@@ -369,6 +374,8 @@ export class VoiceService {
           windowsHide: true,
           env: this.pythonEnv()
         })
+
+        proc.once('error', err => resolve({success: false, error: `Voice engine could not start: ${err.message}. Run setup to install Python and voice dependencies.`}))
 
         let stdout = ''
         let stderr = ''
