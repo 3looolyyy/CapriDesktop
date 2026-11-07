@@ -22,3 +22,15 @@ export class ShakeDetector {
     return this.turns>=3
   }
 }
+
+/** A mention or complaint about game mode is not an instruction to switch it. */
+export function parseGameModeCommand(input: string): boolean | null {
+  let text=input.toLowerCase().trim().replace(/[.!?]+$/,'').replace(/\s+/g,' ')
+  text=text.replace(/^(?:can you|could you|would you)\s+/,'').replace(/^please\s+/,'').replace(/\s+please$/,'')
+  const mode='(?:game|gaming)\\s*mode'
+  if(new RegExp(`^(?:(?:disable|deactivate|stop|exit|leave|turn off) (?:the )?${mode}|(?:turn|switch) (?:the )?${mode} off|${mode} (?:off|disabled))$`).test(text)) return false
+  if(new RegExp(`^(?:(?:(?:enable|activate|start|enter|turn on|switch to) (?:the )?)?${mode}|(?:turn|switch) (?:the )?${mode} on|${mode} (?:on|enabled))$`).test(text)) return true
+  if(/^(?:desactiv[aá]|desactivar|apaga|apagar|salir de) (?:el )?modo (?:gaming|juego)$|^modo (?:gaming|juego) (?:off|desactivado)$/.test(text)) return false
+  if(/^(?:(?:activ[aá]|activar|enciende|pon|ponete) (?:el )?)?modo (?:gaming|juego)(?: on| activado)?$/.test(text)) return true
+  return null
+}

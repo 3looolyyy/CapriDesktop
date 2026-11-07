@@ -1,3 +1,4 @@
+import { parseGameModeCommand } from '../../shared/mac-feature-policy'
 import { parseMacSystemCommand, isMacSystemRequest } from '../../shared/mac-system-commands'
 import { runMacSystemCommand } from '../services/mac-system-service'
 import { deviceClockAnswer, deviceClockContext } from '../../shared/device-clock'
@@ -3148,10 +3149,11 @@ DIRECTIVES FOR FORMATTING AND REASONING:
     const isEs = CapriLocalAgent.detectLanguage(norm) === 'es'
 
     // Gaming Mode Toggle Command (Voice/Chat)
-    const isGamingModeOff =
+    const macModeCommand=isMac ? parseGameModeCommand(norm) : null
+    const isGamingModeOff = isMac ? macModeCommand===false :
       /(?:deactivat[ea]|desactiv[aá]|desactivar|sac(?:ar|a)?|sal(?:ir)?|quit(?:ar|a)?|apag(?:ar|a)?|disable|stop|turn\s*off|exit).*?(?:modo\s+gaming|modo\s+juego|modo\s+game|gaming\s*mode|game\s*mode|gamemode)|(?:modo\s+gaming|modo\s+juego|modo\s+game|gaming\s*mode|game\s*mode|gamemode)\s+(?:off|desactivar|desactivado|0|salir|disable|deactivate)|(?:game\s*mode\s*deactivate|deactivate\s*gamemode|gamemode\s*deactivate|deactivate\s*game\s*mode|game\s*mode\s*off|gamemode\s*off)/i.test(norm)
 
-    const isGamingModeOn =
+    const isGamingModeOn = isMac ? macModeCommand===true :
       /(?:activat[ea]|activ[aá]|activar|pon(?:er|te|ete)?|inici(?:ar|a)|entr(?:ar|a)|enable|start|turn\s*on|switch\s*to)?.*?(?:modo\s+gaming|modo\s+juego|modo\s+game|gaming\s*mode|game\s*mode|gamemode)/i.test(norm)
 
     if (isGamingModeOff) {
@@ -3164,8 +3166,8 @@ DIRECTIVES FOR FORMATTING AND REASONING:
     if (isGamingModeOn) {
       windowManager.setGamingMode(true, 'top-left')
       return isEs
-        ? '¡Modo Gaming activado, choomba! Me quedo fija arriba a la izquierda en modo ojos hasta que cierres el juego.'
-        : 'Gaming Mode activated, {name}! Docking top-left in eye mode until you close the game.'
+        ? (isMac ? '¡Modo Gaming activado, choomba! Me quedo así hasta que vos lo desactives, incluso fuera del juego.' : '¡Modo Gaming activado, choomba! Me quedo fija arriba a la izquierda en modo ojos hasta que cierres el juego.')
+        : (isMac ? 'Gaming Mode on, {name}! Staying in this form until you turn it off, even outside a game.' : 'Gaming Mode activated, {name}! Docking top-left in eye mode until you close the game.')
     }
 
     // Silence of games (on/off)

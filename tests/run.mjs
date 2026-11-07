@@ -15,7 +15,7 @@ await build({
         b.onResolve({ filter: /^electron$/ }, () => ({ path: mock('electron-mock.ts') }))
         b.onResolve({ filter: /mac-desktop$/ }, () => ({ path: mock('native-mock.ts') }))
         b.onResolve(
-          { filter: /agent-manager$|scanner-service$|llm-gateway$|user-profile$|agents\/tools\/tool-executor$|windows\/window-manager$/ },
+          { filter: /script\/script-player$|agent-manager$|scanner-service$|llm-gateway$|user-profile$|agents\/tools\/tool-executor$|windows\/window-manager$/ },
           () => ({ path: mock('dependency-mock.ts') }),
         )
       },
@@ -31,3 +31,11 @@ await build({
   }}]
 })
 execFileSync(process.execPath,['--test','work/scanner-tests.cjs'],{stdio:'inherit'})
+
+await build({
+  entryPoints:['tests/agent-lifecycle.test.ts'],outfile:'work/agent-lifecycle-tests.cjs',bundle:true,platform:'node',format:'cjs',
+  plugins:[{name:'agent-lifecycle-mocks',setup(b){
+    b.onResolve({filter:/capri-local-agent$|script-player$|llm-gateway$|user-profile$|consciousness-service$|shared\/lines$|window-manager$|ollama-service$|roaming-manager$|active-window-service$|pending-result$/},()=>({path:mock('agent-lifecycle-mocks.ts')}))
+  }}]
+})
+execFileSync(process.execPath,['--test','work/agent-lifecycle-tests.cjs'],{stdio:'inherit'})

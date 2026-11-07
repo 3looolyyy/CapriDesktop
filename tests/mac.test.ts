@@ -1,3 +1,4 @@
+import { parseGameModeCommand } from '../src/shared/mac-feature-policy'
 import { gameCompanionState } from '../src/shared/companion-appearance'
 import { MacGameContext, macGameContext } from '../src/main/services/mac-game-context'
 import { detectGameName } from '../src/main/services/game/game-commentary'
@@ -13,9 +14,9 @@ import { isVersionRequest, isHoldStillRequest } from '../src/main/agents/spoken-
 import { macAppName } from '../src/main/services/mac-desktop.ts'
 import { deviceClockAnswer, deviceClockContext } from '../src/shared/device-clock'
 import { friendScreenComment } from '../src/shared/screen-comment-style'
-import { startScreenComments, scheduleScreenComments } from '../src/main/services/screen-comment-service'
+import { startScreenComments, scheduleScreenComments, screenCommentStatus } from '../src/main/services/screen-comment-service'
 import { powerMonitor, setTestMediaStatus } from './electron-mock'
-import { screenCalls } from './dependency-mock'
+import { activity, screenCalls, setTestGamingMode } from './dependency-mock'
 import { commentMinutes, ShakeDetector } from '../src/shared/mac-feature-policy'
 import { featureSettings, saveFeatures } from '../src/main/services/mac-feature-settings'
 import { wakeListeningPrompt } from '../src/shared/voice-policy'
@@ -700,29 +701,33 @@ test('game context follows foreground changes, expires and never invents match t
   context.clear()
   assert.equal(context.prompt(104),'')
 })
-test('game interval persists independently and a game-only schedule never captures other apps',async t=>{
-  assert.equal(saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1}).gameCommentMinutes,1)
+test('game-mode comments work outside games and require the manual switch, not game detection',async t=>{
+  saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1})
   assert.equal(saveFeatures({speechModel:'base'}).gameCommentMinutes,1)
   t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
   const flush=()=>new Promise(resolve=>setImmediate(resolve))
   const before=screenCalls.captures
   try {
-    setTestMediaStatus('granted');macGameContext.clear();scheduleScreenComments()
+    setTestMediaStatus('granted');setTestGamingMode(false);macGameContext.clear();scheduleScreenComments()
     t.mock.timers.tick(60000);await flush()
     assert.equal(screenCalls.captures,before)
-    for(let i=0;i<4;i++) {
-      macGameContext.update({title:'ULTRAKILL',process:'ULTRAKILL',path:'/Applications/ULTRAKILL.app',pid:12})
-      t.mock.timers.tick(15000);await flush()
-    }
-    assert.equal(screenCalls.captures,before+1)
-    macGameContext.clear()
+    macGameContext.update({title:'ULTRAKILL',process:'ULTRAKILL',path:'/Applications/ULTRAKILL.app',pid:12})
+    t.mock.timers.tick(15000);await flush()
+    assert.equal(screenCalls.captures,before,'Detecting a game does not enable game-mode comments')
+    macGameContext.clear();setTestGamingMode(true)
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before+1,'Manual game mode works on the desktop without a game')
+    assert.match(screenCalls.prompts.at(-1) || '',/even if they are browsing/)
+    macGameContext.update({title:'Home',process:'Firefox',path:'/Applications/Firefox.app',pid:13})
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before+2,'Switching to a browser keeps the game-mode schedule')
+    setTestGamingMode(false)
     t.mock.timers.tick(120000);await flush()
-    assert.equal(screenCalls.captures,before+1)
+    assert.equal(screenCalls.captures,before+2)
   } finally {
-    saveFeatures({gameCommentMinutes:0});scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
   }
 })
-
 
 test('macOS Roblox is recognized without treating Roblox browser pages or Studio as a game',()=>{
   assert.equal(detectGameName({title:'Roblox',process:'Roblox',path:'/Applications/Roblox.app',pid:18287}),'Roblox')
@@ -730,30 +735,31 @@ test('macOS Roblox is recognized without treating Roblox browser pages or Studio
   assert.equal(detectGameName({title:'Roblox — Firefox',process:'Firefox',path:'/Applications/Firefox.app',pid:13}),null)
   assert.equal(detectGameName({title:'Roblox Studio',process:'RobloxStudio',path:'/Applications/RobloxStudio.app',pid:13}),null)
 })
-test('one-minute game comments override an eight-minute startup delay and survive brief focus changes',async t=>{
+test('manual mode chooses the one-minute interval across foreground changes and restores the desktop interval when off',async t=>{
   t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
   const flush=()=>new Promise(resolve=>setImmediate(resolve))
   const before=screenCalls.captures
   const game={title:'Roblox',process:'Roblox',path:'/Applications/Roblox.app',pid:18287}
   try {
     setTestMediaStatus('granted');macGameContext.clear()
-    saveFeatures({screenCommentMinutes:8,gameCommentMinutes:1});scheduleScreenComments()
-    for(let i=0;i<4;i++) {
-      if(i===2) macGameContext.update(null)
-      else macGameContext.update(game)
+    saveFeatures({screenCommentMinutes:8,gameCommentMinutes:1});setTestGamingMode(true);scheduleScreenComments()
+    for(let i=0;i<8;i++) {
+      macGameContext.update(i%2 ? null : game)
       t.mock.timers.tick(15000);await flush()
     }
-    assert.equal(screenCalls.captures,before+1,'First game scan is due after one minute, not eight')
-    for(let i=0;i<4;i++) {
-      macGameContext.update(i===1 ? null : game)
-      t.mock.timers.tick(15000);await flush()
-    }
-    assert.equal(screenCalls.captures,before+2,'Brief focus changes must not restart the countdown')
+    assert.equal(screenCalls.captures,before+2)
+    setTestGamingMode(false)
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before+2,'Mode off uses the eight-minute desktop interval')
+    t.mock.timers.tick(420000);await flush()
+    assert.equal(screenCalls.captures,before+3)
+    saveFeatures({gameCommentMinutes:0});setTestGamingMode(true)
+    t.mock.timers.tick(480000);await flush()
+    assert.equal(screenCalls.captures,before+3,'Zero explicitly disables game-mode comments')
   } finally {
-    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();macGameContext.clear();setTestMediaStatus('denied');t.mock.timers.reset()
   }
 })
-
 
 test('Mac game appearance stays framed while thinking, speaking or running a script, until explicitly disabled',()=>{
   for(const state of ['thinking','working','talking','asustada','closed','standing','ojos2']) {
@@ -763,4 +769,105 @@ test('Mac game appearance stays framed while thinking, speaking or running a scr
     assert.equal(gameCompanionState('Win32',true,state),state)
     assert.equal(gameCompanionState('Linux',true,state),state)
   }
+})
+
+
+test('manual Mac game mode survives partial setting updates and an explicit off selection persists',()=>{
+  assert.equal(featureSettings().gamingMode,false)
+  saveFeatures({gamingMode:true})
+  assert.equal(saveFeatures({screenCommentMinutes:8,gameCommentMinutes:1}).gamingMode,true)
+  assert.equal(saveFeatures({speechModel:'base'}).gamingMode,true)
+  assert.equal(JSON.parse(readFileSync(path.join(temp,'mac-features.json'),'utf8')).gamingMode,true)
+  saveFeatures({gamingMode:false})
+  assert.equal(featureSettings().gamingMode,false)
+  assert.throws(()=>saveFeatures({gamingMode:'yes' as any}))
+  saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0})
+})
+test('turning game mode off aborts an in-flight game comment and drops its late reply',async t=>{
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const spoken=screenCalls.speech.length
+  try {
+    setTestMediaStatus('granted');macGameContext.clear()
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1});setTestGamingMode(true);scheduleScreenComments()
+    screenCalls.defer=true
+    t.mock.timers.tick(60000);await flush()
+    assert.ok(screenCalls.resolve)
+    setTestGamingMode(false)
+    assert.equal(screenCalls.signal?.aborted,true)
+    screenCalls.resolve!('This stale game-mode reply must not be spoken.')
+    await flush()
+    assert.equal(screenCalls.speech.length,spoken)
+  } finally {
+    screenCalls.defer=false;screenCalls.resolve=null
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+
+
+test('screen checks keep a start-to-start minute deadline despite slow replies and stale curious poses',async t=>{
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const before=screenCalls.captures
+  const start=Date.now()
+  try {
+    setTestMediaStatus('granted');activity.pose='curious';activity.running=false;activity.script=false
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1});setTestGamingMode(true);scheduleScreenComments()
+    screenCalls.defer=true
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before+1,'A stale pose must not suppress a real check')
+    assert.equal(screenCommentStatus().nextScanAt,start+120000)
+    t.mock.timers.tick(20000);await flush()
+    screenCalls.defer=false;screenCalls.resolve!('A unique delayed first reply for the cadence check.')
+    await flush()
+    assert.equal(screenCommentStatus().nextScanAt,start+120000,'Reply latency must not restart the timer')
+    t.mock.timers.tick(39999);await flush()
+    assert.equal(screenCalls.captures,before+1)
+    t.mock.timers.tick(1);await flush()
+    assert.equal(screenCalls.captures,before+2,'Second scan starts at minute two, not after reply plus another minute')
+  } finally {
+    screenCalls.defer=false;screenCalls.resolve=null;activity.pose='standing'
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+test('actual task/script activity postpones a due check only until activity ends',async t=>{
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const before=screenCalls.captures
+  try {
+    setTestMediaStatus('granted');activity.running=true;activity.script=true;activity.pose='thinking'
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:1});setTestGamingMode(true);scheduleScreenComments()
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before);assert.equal(screenCommentStatus().state,'busy')
+    activity.running=false;t.mock.timers.tick(1000);await flush()
+    assert.equal(screenCalls.captures,before)
+    activity.script=false;t.mock.timers.tick(1000);await flush()
+    assert.equal(screenCalls.captures,before+1,'Resume a due scan without waiting another full interval')
+  } finally {
+    activity.running=false;activity.script=false;activity.pose='standing'
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+test('transient comment errors keep the selected intervals and report/retry their next deadline',async t=>{
+  t.mock.timers.enable({apis:['Date','setInterval'],now:Date.now()})
+  const flush=()=>new Promise(resolve=>setImmediate(resolve))
+  const before=screenCalls.captures
+  try {
+    setTestMediaStatus('granted');screenCalls.fail=true
+    saveFeatures({screenCommentMinutes:8,gameCommentMinutes:1});setTestGamingMode(true);scheduleScreenComments()
+    t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCommentStatus().state,'error')
+    assert.equal(featureSettings().gameCommentMinutes,1);assert.equal(featureSettings().screenCommentMinutes,8)
+    screenCalls.fail=false;t.mock.timers.tick(60000);await flush()
+    assert.equal(screenCalls.captures,before+2)
+    assert.equal(screenCommentStatus().state,'waiting')
+  } finally {
+    screenCalls.fail=false
+    saveFeatures({screenCommentMinutes:0,gameCommentMinutes:0});setTestGamingMode(false);scheduleScreenComments();setTestMediaStatus('denied');t.mock.timers.reset()
+  }
+})
+test('only explicit Mac mode commands toggle the mode; questions, complaints and negations do not',()=>{
+  for(const input of ['turn off game mode','game mode off','disable gaming mode','could you please turn gaming mode off?']) assert.equal(parseGameModeCommand(input),false)
+  for(const input of ['game mode','turn on gaming mode','game mode on','could you please enable game mode?']) assert.equal(parseGameModeCommand(input),true)
+  for(const input of ['why does it exit game mode?',"don't turn off game mode",'stop turning game mode off','game mode still does not check every minute','tell me what game mode does']) assert.equal(parseGameModeCommand(input),null)
 })

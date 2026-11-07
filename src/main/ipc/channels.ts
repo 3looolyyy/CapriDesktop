@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  DESKTOP_COMMENT_STATUS: 'desktop:comment-status',
   DESKTOP_PREFERENCES: 'desktop:preferences',
   DESKTOP_CONFIGURE: 'desktop:configure',
   DESKTOP_LOGIN: 'desktop:login',

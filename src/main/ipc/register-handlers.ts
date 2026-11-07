@@ -1,5 +1,5 @@
 import { featureSettings, saveFeatures } from '../services/mac-feature-settings'
-import { scheduleScreenComments } from '../services/screen-comment-service'
+import { scheduleScreenComments, screenCommentStatus } from '../services/screen-comment-service'
 import { screen as desktopScreen } from 'electron'
 import { setLocalAIEnabled } from '../services/local-ai-policy'
 import { getStorageRoot } from '../services/storage-location'
@@ -59,7 +59,7 @@ export function registerIpcHandlers(): void {
       { label: 'Toggle Hey Capri · ⌘⌥L', click: () => windowManager.broadcast(IPC_CHANNELS.VOICE_TOGGLE_ALWAYS_LISTENING) },
       { type: 'separator' },
       { label: 'Game mode', type: 'checkbox', checked: windowManager.isGamingModeActive(), click: item => windowManager.setGamingMode(item.checked) },
-      { label: 'Game screen comments', submenu: [
+      { label: 'Game-mode comments', submenu: [
         { label: 'Screenshots go to your cloud vision provider', enabled: false },
         ...[0,1,3,5,10].map(minutes => ({ label: minutes ? `Every ${minutes} minute${minutes===1 ? '' : 's'}` : 'Off', type: 'radio' as const, checked: prefs.gameCommentMinutes===minutes, click: () => { saveFeatures({gameCommentMinutes:minutes}); scheduleScreenComments() } }))
       ] },
@@ -74,9 +74,10 @@ export function registerIpcHandlers(): void {
     if(!isMac || !update || typeof update!=='object') throw new Error('Invalid Mac settings')
     saveFeatures(update)
     if(update.speechModel!==undefined) voiceService.stopServer()
-    scheduleScreenComments()
+    if(update.screenCommentMinutes!==undefined || update.gameCommentMinutes!==undefined) scheduleScreenComments()
     return desktopPreferences()
   })
+  ipcMain.handle(IPC_CHANNELS.DESKTOP_COMMENT_STATUS,()=>screenCommentStatus())
   ipcMain.handle(IPC_CHANNELS.DESKTOP_PREFERENCES,()=>desktopPreferences())
   ipcMain.handle(IPC_CHANNELS.DESKTOP_LOGIN,(_event,enabled)=>setOpenAtLogin(enabled))
   ipcMain.handle(IPC_CHANNELS.DESKTOP_PLACE,(_event,target:PlacementCommand)=>{

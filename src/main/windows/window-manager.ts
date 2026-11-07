@@ -1,3 +1,4 @@
+import { featureSettings, saveFeatures } from '../services/mac-feature-settings'
 import { createOnboardingWindow } from './onboarding-window'
 import { BrowserWindow, app, screen, globalShortcut } from 'electron'
 import { DEFAULT_HOTKEYS, hotkeyProblem, type HotkeyAction, type HotkeyProblem, type Hotkeys } from '../../shared/hotkeys'
@@ -165,6 +166,7 @@ export class WindowManager {
     // Initialize desktop roaming listener and start autonomous behavior cycle
     roamingManager.init()
     roamingManager.startAutonomousCycle()
+    if (isMac && featureSettings().gamingMode) this.setGamingMode(true)
   }
 
   /** The setup again, for whoever skipped a step or had one fail */
@@ -508,6 +510,10 @@ export class WindowManager {
     enabled: boolean,
     corner: 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left' = 'top-left'
   ): void {
+    if (isMac) {
+      try { saveFeatures({gamingMode:enabled}) }
+      catch (error) { console.warn('[WindowManager] Could not save game mode:', error) }
+    }
     this.isGamingMode = enabled
 
     if (!this.companionWin || this.companionWin.isDestroyed()) return

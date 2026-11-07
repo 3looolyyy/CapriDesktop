@@ -4,7 +4,7 @@ Apple Silicon personal build. See [UPSTREAM-MAC-REVIEW.md](UPSTREAM-MAC-REVIEW.m
 
 ## Passing checks
 
-- 54 regression tests covering platform/updater routing, cloud vision/provider separation, credential-safe request metadata, Spotify selection/errors, placement/crop math, voice wake gating, microphone cleanup, screen-comment consent/lock gating, Mac command bounds, hotkeys, multilingual fixed requests and speech-cache relocation planning.
+- 62 regression tests covering platform/updater routing, cloud vision/provider separation, credential-safe request metadata, Spotify selection/errors, placement/crop math, voice wake gating, microphone cleanup, screen-comment consent/lock gating, Mac command bounds, hotkeys, multilingual fixed requests and speech-cache relocation planning.
 - TypeScript main/preload/renderer checks; Python voice-script syntax; Swift native helper build; production Electron arm64 package and signature verification.
 - Packaged read-only native queries for battery, disk space, OS version, local clock and system volume.
 - Offline synthetic speech transcription with a previously downloaded Whisper base model. Missing-model state in a fresh profile returns setup instructions; no model silently downloaded.
@@ -44,3 +44,21 @@ Replaced the mode-switch-reset countdown with elapsed time since the last attemp
 Mac game appearance is now resolved after transient script/AI/voice states, so a pending cloud reply cannot replace the framed eyes with the full-body thinking sprite. A platform-routing regression covers thinking, speech, script looks and explicit mode exit, preserving Windows/Linux behavior. Foreground game detection does not automatically turn off manually enabled Mac game mode.
 
 Revision 15 was installed in place and reopened. The signing requirement remained unchanged, and the existing 8-minute desktop / 1-minute game preferences were preserved. A subsequent automatic vision request returned HTTP 200 while the native foreground helper identified Roblox; this confirms a live provider cycle, not subjective acceptance of every spoken comment. The new arm64 DMG checksum verified successfully. The game-form lock is covered by the appearance regression; a full gameplay question-and-answer retest remains for the user.
+
+## Manual game mode across applications
+
+Game-mode comment cadence now follows the explicit mode switch, independently of foreground game detection. The mode persists in Mac feature settings and is restored after roaming initialization. Settings includes a mode checkbox, and voice confirmation no longer says closing a game will disable it. Zero disables automatic comments for that mode; desktop cadence resumes when the switch is off. Mode changes abort pending comment requests and suppress late results.
+
+62 regression tests pass, covering comments without a detected game, game detection without mode enabled, app switching, desktop interval restoration, explicit zero, partial settings persistence, and stale-response cancellation. Private/locked screens and busy/permission guards remain in place. Synthetic capture/provider tests do not establish the subjective quality of comments on every application.
+
+Installed-app manual check: enabled the new checkbox while in the shared Settings page, returned to the companion and observed the cyber-frame, quit Capri and confirmed its process exited, then reopened the installed app and observed the restored cyber-frame. The saved mode was true and the prior desktop/game intervals remained 8/1 minutes. The checkbox was left enabled for user testing. Version and designated signing requirement were unchanged. This verifies manual mode/persistence; cross-app commentary cadence is additionally covered by synthetic-provider regression tests.
+
+## Screen-comment cadence and diagnostics
+
+Replaced avatar-pose gating with actual agent/script/scanner activity. The next check is measured from scan start, independent of provider reply latency, with one-second due/activity resolution and cached settings. Transient failures preserve configured intervals; repeated failures use visible backoff, never faster than the selected interval. Read-only timer metadata is available in Settings and in the app-data `screen-comment-status.json`; it contains no images, prompts, responses or credentials.
+
+New regression tests cover a stale curious pose, a 20-second reply without deadline drift, actual task/script pauses and prompt resumption, transient error/retry persistence, and explicit Mac mode-command parsing. Questions, negations and complaints no longer toggle the mode. Mac placement preserves game mode, and proactive-dialogue auto-healing cannot disable manual Mac mode.
+
+AgentManager also releases its busy latch when a prompt promise completes or fails without a session-finished event, while preserving a concurrent editor task. Two direct AgentManager lifecycle regressions cover those paths. Total: 62 tests. A due check resumes after actual task/script activity ends without starting another full interval.
+
+Installed-app live cadence verification: observed two automatic screen captures 60.188 seconds apart with game mode active and a one-minute interval. The first posted a comment; the second was recorded as a duplicate and was not spoken again. This verifies scan cadence independently of audible-comment frequency. The old profile had both comment intervals set to zero; the requested one-minute game interval was restored through Settings.

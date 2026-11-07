@@ -104,6 +104,13 @@ export class RoamingManager {
     if (!win || win.isDestroyed()) return
     const before=win.getBounds()
     const sitting=target!=='here' || this.pinnedPlacement?.sitting || this.isTabMode
+    if (isMac && windowManager.isGamingModeActive()) {
+      const bounds=target==='here' ? before : anchorBounds(screen.getDisplayMatching(before).workArea,{width:before.width,height:before.height},target)
+      win.setBounds(bounds)
+      windowManager.setSavedGamingPosition({x:bounds.x,y:bounds.y})
+      windowManager.hideDeck()
+      return
+    }
     if (windowManager.isGamingModeActive()) windowManager.setGamingMode(false)
     this.clearTimers(); this.stopTabTracking()
     if (this.catchGameTimer) clearInterval(this.catchGameTimer)

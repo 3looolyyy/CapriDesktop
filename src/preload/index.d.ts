@@ -1,3 +1,4 @@
+import type { ScreenCommentStatus } from '../shared/mac-types'
 import type { DesktopPreferences } from '../shared/mac-types'
 import type { PlacementCommand } from '../shared/placement'
 import type { LlmPublicSettings, LlmSettingsUpdate } from '../main/services/llm-gateway'
@@ -27,6 +28,7 @@ import type { PlatformStatus, MacPermission } from '../shared/mac-types'
 import type { SpotifySettings, SpotifyMethod, SpotifyDevice } from '../main/services/spotify-service'
 export interface IElectronAPI {
   desktop: {
+    commentStatus: () => Promise<ScreenCommentStatus>
     openSettings: (voice?:boolean) => Promise<void>
     onOpenVoiceSettings: (callback:()=>void) => ()=>void
     onOpenSettings: (callback:()=>void) => ()=>void

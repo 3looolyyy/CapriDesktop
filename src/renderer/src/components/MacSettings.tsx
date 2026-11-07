@@ -1,3 +1,4 @@
+import type { ScreenCommentStatus } from '../../../shared/mac-types'
 import type { DesktopPreferences } from '../../../shared/mac-types'
 import type { PlacementCommand } from '../../../shared/placement'
 import React, { useEffect, useState, useRef } from 'react'
@@ -34,6 +35,8 @@ export const MacSettings: React.FC = () => {
   const speechSetupRef=useRef(false)
   const [minutes,setMinutes]=useState(0)
   const [gameMinutes,setGameMinutes]=useState(0)
+  const [gameMode,setGameMode]=useState(false)
+  const [commentStatus,setCommentStatus]=useState<ScreenCommentStatus|null>(null)
   const [query, setQuery] = useState('')
   const [desktop,setDesktop]=useState<DesktopPreferences|null>(null)
   const [position,setPosition]=useState<PlacementCommand>('bottom')
@@ -43,6 +46,7 @@ export const MacSettings: React.FC = () => {
     setDesktop(prefs)
     setMinutes(prefs.screenCommentMinutes)
     setGameMinutes(prefs.gameCommentMinutes)
+    setGameMode(await window.api.companion.getGamingMode())
     const s = await window.api.spotify.settings()
     setSpotify(s)
     setClientId(s.clientId)
@@ -54,7 +58,11 @@ export const MacSettings: React.FC = () => {
     }
     window.addEventListener('focus', focus)
     const unsubscribe=window.api.setup.onLog(({step,line})=>{if(speechSetupRef.current && ['python','whisper'].includes(step)) setSpeechLog(line)})
-    return () => {window.removeEventListener('focus', focus);unsubscribe()}
+    const refreshComments=()=>{void window.api.desktop.commentStatus().then(setCommentStatus).catch(()=>{})}
+    refreshComments()
+    const commentTimer=window.setInterval(refreshComments,5000)
+    const unsubscribeGame=window.api.companion.onGamingModeChanged(setGameMode)
+    return () => {window.removeEventListener('focus', focus);unsubscribe();unsubscribeGame();window.clearInterval(commentTimer)}
   }, [])
   if (status?.platform !== 'darwin') return null
   const run = async (fn: () => Promise<unknown>) => {
@@ -141,12 +149,23 @@ export const MacSettings: React.FC = () => {
           <input aria-label="Screen comment interval in minutes" type="number" min="0" max="120" step="1" value={minutes} onChange={e=>setMinutes(Number(e.target.value))} className="cp-input w-20 p-2 bg-[#170a0b]" /> minutes (0 = off)
           <button disabled={busy || !Number.isInteger(minutes) || minutes<0 || minutes>120} className={btn} onClick={()=>run(async()=>{setDesktop(await window.api.desktop.configure({screenCommentMinutes:minutes}));setMessage(minutes ? `Automatic cloud screen comments enabled every ${minutes} minute(s).` : 'Automatic screen comments off.')})}>Save interval</button>
         </label>
-        <h3 className="font-semibold">Game screen comments</h3>
-        <p className="text-xs">When a supported foreground game is detected, use this interval instead. Off by default; enabling it sends screenshots to your cloud vision provider. Capri knows the detected game name and reacts to visible play, without game telemetry. Voice works during fullscreen games; text chat may switch focus away. Borderless/windowed mode is recommended for typing.</p>
+        <h3 className="font-semibold">Game mode</h3>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={gameMode} disabled={busy} onChange={e=>{const enabled=e.target.checked;void run(async()=>{await window.api.companion.setGamingMode(enabled);setGameMode(await window.api.companion.getGamingMode())})}} />
+          Keep game mode on across apps and restarts
+        </label>
+        <h3 className="font-semibold">Game-mode screen comments</h3>
+        <p className="text-xs">While game mode is on, use this interval in games, browsers, on the desktop and in other apps. No game detection is required. 0 disables automatic comments in game mode; the ordinary desktop interval applies when game mode is off. Screenshots go to your cloud vision provider. Game detection only adds context and does not provide match telemetry. Voice works during fullscreen games; text chat may switch focus away. Borderless/windowed mode is recommended for typing.</p>
         <label className="flex flex-wrap items-center gap-2 text-sm">Every
           <input aria-label="Game comment interval in minutes" type="number" min="0" max="120" step="1" value={gameMinutes} onChange={e=>setGameMinutes(Number(e.target.value))} className="cp-input w-20 p-2 bg-[#170a0b]" /> minutes (0 = off)
           <button disabled={busy || !Number.isInteger(gameMinutes) || gameMinutes<0 || gameMinutes>120} className={btn} onClick={()=>run(async()=>{setDesktop(await window.api.desktop.configure({gameCommentMinutes:gameMinutes}));setMessage(gameMinutes ? `Game screen comments enabled every ${gameMinutes} minute(s).` : 'Game screen comments off.')})}>Save game interval</button>
         </label>
+        {commentStatus && <div className="border border-[#633138] p-3 space-y-1 text-sm select-text" aria-label="Screen comment timer status">
+          <p>Active timer: <strong>{commentStatus.mode==='game' ? 'Game mode' : 'Desktop'}</strong> · {commentStatus.intervalMinutes ? `every ${commentStatus.intervalMinutes} minute(s)` : 'off'}</p>
+          <p>{({off:'Automatic comments are off for this mode.',waiting:'Waiting for the next check.',busy:'Paused while a task, speech script or scan is active.',locked:'Paused while your Mac is locked or asleep.','screen-denied':'Paused: Screen Recording permission is missing.','local-provider':'Paused: select a cloud vision provider.',checking:'Checking the screen now.',error:'The last check failed; a retry is scheduled.'})[commentStatus.state]}</p>
+          <p className="text-xs">Last screen check: {commentStatus.lastScanAt ? new Date(commentStatus.lastScanAt).toLocaleTimeString() : 'not yet'} · Next check: {commentStatus.nextScanAt ? new Date(commentStatus.nextScanAt).toLocaleTimeString() : 'not scheduled'}</p>
+          {commentStatus.lastResult && <p className="text-xs">Last result: {({'spoken':'Comment shown.','no-comment':'Screen checked; the model chose no comment (for example a private or uninteresting screen).',duplicate:'Screen checked; repeated comment skipped.','capture-empty':'No screen image was available.',error:'Provider/capture error; your interval has been kept.'})[commentStatus.lastResult]}</p>}
+        </div>}
       </div>
       <p className="text-sm text-[var(--cp-muted)]">
         Permissions are optional. Chat and the companion work without desktop access.

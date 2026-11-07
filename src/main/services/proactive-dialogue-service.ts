@@ -174,6 +174,7 @@ export class ProactiveDialogueService {
     // In Gaming Mode (LoL / Cyberpunk), let in-game telemetry handle voice commentary
     // But if Gaming Mode is stuck on with no active game running, auto-heal and allow desktop conversation
     if (windowManager.isGamingModeActive()) {
+      if (isMac) return false // Manual Mac mode is never auto-healed off.
       const isCyberpunk = cyberpunkAdapter?.isCyberpunkActive?.() ?? false
       const isLol = lolLiveAdapter?.isRunning?.() ?? false
       if (!isCyberpunk && !isLol && !gamePresenceService.isGameSessionActive()) {

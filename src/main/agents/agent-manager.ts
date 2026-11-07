@@ -255,6 +255,8 @@ export class AgentManager extends EventEmitter {
         apiKey: this.config.apiKey
       })
     } finally {
+      // A completed prompt must release the activity latch even if its path emitted no finish event.
+      if (isDevTask || !this.devTaskRunning) this.isRunning = false
       // Desktop prompts never wake the user up: only the end of a prompt sent from Dev Mode,
       // decided here when that very prompt returns (some agent paths emit no session.finished)
       if (isDevTask) {

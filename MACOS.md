@@ -52,11 +52,15 @@ If Accessibility specifically says the desktop helper needs access, follow the s
 
 Manual vision: ask what is on screen or use Scan. Cloud vision sends the requested image to the configured provider.
 
-Automatic comments: Mac settings → Screen comments → enter 1–120 whole minutes → Save interval. **0 means off**, the default. When enabled, screenshots of the display under your pointer are sent to cloud vision. Comments pause while locked/suspended or Capri is busy; errors disable the schedule. Responses aim to be short, friendly Cyberpunk remarks and skip private/settings screens. This is model-guided behavior, not a guarantee of private-content detection.
+Automatic comments: Mac settings → Screen comments → enter 1–120 whole minutes → Save interval. **0 means off**, the default. When enabled, screenshots of the display under your pointer are sent to cloud vision. Comments pause while locked/suspended or Capri is busy; transient errors keep the interval and retry, with backoff after repeated failures. Responses aim to be short, friendly Cyberpunk remarks and skip private/settings screens. This is model-guided behavior, not a guarantee of private-content detection.
 
 Live Scan: open the scanner and click **Live off**. Cloud mode asks before enabling uploads, sends changed frame contents at most once per minute, and stays off after restarting. Closing the scanner, locking/suspending the Mac, changing AI settings or a scan error stops cloud Live Scan.
 
-Game comments: right-click Capri → **Game screen comments**, or open **Mac settings** and set its separate interval. This is off by default; enabling it uploads screenshots while a recognized game is foreground. Detection supports Steam game paths, native macOS Roblox, and ULTRAKILL, including common Wine/CrossOver process names. When window bounds are available, capture follows the game's display. Game identity adds context but does not supply live telemetry. A zero game interval leaves the ordinary screen-comment schedule unchanged.
+Settings also shows the active desktop/game timer, last screen check, next scheduled check and pause reason. Checks are scheduled from their start time, so provider response time does not add another interval. Actual task/script activity, locking or missing Screen Recording permission can pause a due check; an old animation pose cannot. A check may legitimately produce no comment or skip an identical remark; the last result is shown separately. Diagnostics contain timing/status metadata only, not screen images, prompts, answers or API keys.
+
+Game mode is a manual switch: enable it from the companion menu or **Settings → Mac & Spotify → Game mode**. It stays on across games, browsers, the desktop and other apps, and is restored after restarting Capri. Turn it off explicitly to return to desktop mode.
+
+Game-mode comments: choose **Game-mode comments** in the companion menu or set its interval in Settings. The game-mode interval applies whenever the switch is on, with no foreground-game requirement. **0 disables automatic comments while game mode is on.** When off, Capri uses the ordinary desktop interval. Enabling comments sends screenshots to your cloud vision provider, including outside games; privacy/lock/busy gating still applies. Game detection only adds context. Recognition includes Steam game paths, native Roblox and ULTRAKILL, with common Wine/CrossOver process names. When an identified game is foreground, capture can follow its display. Detection is not live match telemetry.
 
 The Mac right-click menu works in desktop and game mode and opens the same full-size settings as the main app. Hold Command or Control over the game overlay to interact. Non-activating panels reduce application focus changes, but some exclusive-fullscreen games still minimize when another window needs keyboard focus. Use voice during fullscreen play, or borderless/windowed mode for text chat. Returning from settings preserves game mode and its position. On Mac, the framed eyes remain visible while thinking/speaking and when switching to other apps; game mode stays on until you turn it off.
 
@@ -70,7 +74,7 @@ Mac update checks open the upstream release page for manual updates. This person
 
 Supported macros: apps, URLs, music/media controls, ordinary companion game mode, speech and waits. Shell-command macros, Paint drawing, ShadowPlay and League/Cyberpunk integrations are unavailable on Mac. Windows/Linux runtime behavior remains untested.
 
-Validation: 54 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
+Validation: 62 focused tests, TypeScript checks, production build and installed signature verification passed. Cloud chat/vision and voice recognition were tested on this Mac. External/Retina displays and clean installation on another Mac remain unverified.
 
 ## Native Mac compatibility update (1.0.12)
 
@@ -78,7 +82,7 @@ Current local time/date/day questions are answered from the device clock, includ
 
 Explicit Chrome, Firefox, Safari, Edge, Brave and Opera requests open the named installed browser; a query opens in that browser. Missing apps return a failure. Explorer/File Explorer resolves to Finder, Task Manager to Activity Monitor, Control Panel to System Settings, Notepad to TextEdit and calc to Calculator. Apps are asked to quit normally, allowing save prompts. The coding terminal uses a Unix shell on Mac.
 
-Validation: 54 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
+Validation: 62 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
 
 ## Upstream 1.0.4 / Mac revision 13
 

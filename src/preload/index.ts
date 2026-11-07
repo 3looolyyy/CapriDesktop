@@ -1,3 +1,4 @@
+import type { ScreenCommentStatus } from '../shared/mac-types'
 import type { DesktopPreferences } from '../shared/mac-types'
 import type { PlacementCommand } from '../shared/placement'
 import type { LlmPublicSettings, LlmSettingsUpdate } from '../main/services/llm-gateway'
@@ -41,6 +42,7 @@ import type { SpotifySettings, SpotifyMethod, SpotifyDevice } from '../main/serv
 
 const api = {
   desktop: {
+    commentStatus: (): Promise<ScreenCommentStatus> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_COMMENT_STATUS),
     openSettings: (voice = false): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.DESKTOP_OPEN_SETTINGS, voice),
     onOpenVoiceSettings: (callback:()=>void):(()=>void) => {const listener=()=>callback();ipcRenderer.on('desktop:open-voice-settings',listener);return ()=>ipcRenderer.removeListener('desktop:open-voice-settings',listener)},
     onOpenSettings: (callback:()=>void):(()=>void) => {const listener=()=>callback();ipcRenderer.on('desktop:open-settings',listener);return ()=>{ipcRenderer.removeListener('desktop:open-settings',listener)}},
