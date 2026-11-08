@@ -1,3 +1,4 @@
+import { startMacDesktopMonitoring } from './services/mac-desktop'
 import './services/mac-bootstrap'
 import { startScreenComments } from './services/screen-comment-service'
 import { isMac } from './services/platform'
@@ -72,6 +73,7 @@ if (!gotTheLock) {
   }
 
   app.whenReady().then(async () => {
+    if (isMac) startMacDesktopMonitoring()
     const systemReport=app.commandLine.getSwitchValue('mac-system-check')
     if(isMac && systemReport && app.commandLine.hasSwitch('user-data-dir')) {
       const {runMacSystemCheck}=await import('./services/mac-system-check')

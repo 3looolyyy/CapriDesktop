@@ -8,7 +8,7 @@ import { windowManager } from '../windows/window-manager'
 import { agentManager } from '../agents/agent-manager'
 import { consciousnessService } from '../services/consciousness-service'
 import { IPC_CHANNELS, RoamingStatusPayload } from '../ipc/channels'
-import { findMacWindowedApp, macWindowGeometry } from '../services/mac-desktop'
+import { findMacWindowedApp, macWindowGeometry, macDesktopPollingPaused } from '../services/mac-desktop'
 import { findLinuxWindowedApp, isMac, isLinux, linuxWindowGeometry } from '../services/platform'
 
 export interface WindowedAppInfo {
@@ -438,10 +438,15 @@ export class RoamingManager {
     let last = ''
     let asking = false
     const timer = setInterval(async () => {
-      if (asking) return
+      if (asking || (isMac && macDesktopPollingPaused())) return
+      const companion = windowManager.getCompanionWindow()
+      if (isMac && (!companion || companion.isDestroyed() || !companion.isVisible())) return
       asking = true
-      const geometry = await (isMac ? macWindowGeometry(id) : linuxWindowGeometry(id))
-      asking = false
+      let geometry
+      try { geometry = await (isMac ? macWindowGeometry(id) : linuxWindowGeometry(id)) }
+      catch { return }
+      finally { asking = false }
+      if (isMac && macDesktopPollingPaused()) return
       if (this.linuxTrackTimer !== timer) return
       if (!geometry) {
         this.stopTabTracking()
@@ -798,7 +803,7 @@ export class RoamingManager {
       }
 
       const companionWin = windowManager.getCompanionWindow()
-      if (!companionWin || companionWin.isDestroyed() || !companionWin.isVisible()) return
+      if (!companionWin || companionWin.isDestroyed() || !companionWin.isVisible() || (isMac && macDesktopPollingPaused())) return
 
       try {
         const bounds = companionWin.getBounds()

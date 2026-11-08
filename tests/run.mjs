@@ -39,3 +39,11 @@ await build({
   }}]
 })
 execFileSync(process.execPath,['--test','work/agent-lifecycle-tests.cjs'],{stdio:'inherit'})
+
+await build({
+  entryPoints:['tests/mac-desktop-cache.test.ts'],outfile:'work/mac-desktop-cache-tests.cjs',bundle:true,platform:'node',format:'cjs',
+  plugins:[{name:'desktop-cache-mocks',setup(b){
+    b.onResolve({filter:/^electron$|^child_process$/},()=>({path:mock('mac-desktop-cache-mocks.ts')}))
+  }}]
+})
+execFileSync(process.execPath,['--test','work/mac-desktop-cache-tests.cjs'],{stdio:'inherit'})

@@ -217,7 +217,11 @@ case "status": emit(["accessibility": AXIsProcessTrusted(), "spotifyAutomation":
 case "request-accessibility":
     let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
     emit(["accessibility": AXIsProcessTrustedWithOptions(options)])
-case "windows": emit(windows())
+case "windows":
+    if args.count > 1 {
+        guard let pid = Int32(args[1]), pid > 0 else { emit(["error": "Invalid process identifier"]); exit(1) }
+        emit(windows(pid))
+    } else { emit(windows()) }
 case "spotify-search": emit(spotifySearch(args.dropFirst().first ?? ""))
 case "spotify-submit": emit(spotifySubmit(args.dropFirst().first ?? ""))
 case "spotify-play-result": emit(spotifyPlayResult(args.dropFirst().first ?? "", args.dropFirst(2).first ?? ""))

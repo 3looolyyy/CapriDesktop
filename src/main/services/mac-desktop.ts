@@ -1,4 +1,5 @@
-import { app } from 'electron'
+import { app, powerMonitor } from 'electron'
+import { AsyncSnapshot } from '../../shared/async-snapshot'
 import { execFile } from 'child_process'
 import path from 'path'
 import type { ForegroundWindow, WindowedApp } from './platform'
@@ -18,18 +19,46 @@ export function macHelper<T>(command: string, args: string[] = []): Promise<T> {
   )
 }
 export type MacWindow = WindowedApp & { pid: number; process: string; path: string; frontmost: boolean }
-let foregroundRequest: Promise<ForegroundWindow> | null = null
-let foregroundAt = 0
-export function macForegroundWindow(): Promise<ForegroundWindow> {
-  if (!foregroundRequest || Date.now()-foregroundAt > 1000) {
-    foregroundAt=Date.now()
-    foregroundRequest=macHelper<ForegroundWindow>('foreground').then(value=>({bounds:value.bounds,title:value.title || '',process:value.process || '',path:value.path || '',pid:Number(value.pid) || 0})).catch(error=>{foregroundRequest=null;throw error})
-  }
-  return foregroundRequest
+let pollingPaused = false
+let monitoringStarted = false
+const foregroundSnapshot = new AsyncSnapshot<ForegroundWindow>(async () => {
+  const value = await macHelper<ForegroundWindow>('foreground')
+  return { bounds: value.bounds, title: value.title || '', process: value.process || '', path: value.path || '', pid: Number(value.pid) || 0 }
+}, 1000)
+const windowsSnapshot = new AsyncSnapshot<MacWindow[]>(() => macHelper('windows'), 750)
+const appSnapshots = new Map<string, AsyncSnapshot<MacWindow[]>>()
+function invalidateDesktopSnapshots() {
+  foregroundSnapshot.invalidate(); windowsSnapshot.invalidate()
+  for (const snapshot of appSnapshots.values()) snapshot.invalidate()
+  appSnapshots.clear()
 }
-export const macWindows = (): Promise<MacWindow[]> => macHelper('windows')
+/** Called once after Electron is ready. Resume always starts with fresh window information. */
+export function startMacDesktopMonitoring(): void {
+  if (monitoringStarted || process.platform !== 'darwin') return
+  monitoringStarted = true
+  const pause = () => { pollingPaused = true; invalidateDesktopSnapshots() }
+  const resume = () => { pollingPaused = false; invalidateDesktopSnapshots() }
+  powerMonitor.on('lock-screen', pause); powerMonitor.on('suspend', pause)
+  powerMonitor.on('unlock-screen', resume); powerMonitor.on('resume', resume)
+  app.once('before-quit', pause)
+}
+export function macDesktopPollingPaused(): boolean { return pollingPaused }
+export function macForegroundWindow(): Promise<ForegroundWindow> {
+  return pollingPaused ? Promise.resolve({ title: '', process: '', path: '', pid: 0 }) : foregroundSnapshot.get()
+}
+export const macWindows = (): Promise<MacWindow[]> => pollingPaused ? Promise.resolve([]) : windowsSnapshot.get()
 export async function macWindowGeometry(id: string): Promise<MacWindow | null> {
-  return (await macWindows().catch(() => [])).find((w) => w.hwnd === id) || null
+  if (pollingPaused) return null
+  const pid = id.match(/^([1-9]\d*):/)?.[1]
+  if (!pid) return null
+  let snapshot = appSnapshots.get(pid)
+  if (!snapshot) {
+    if (appSnapshots.size >= 8) { const oldest = appSnapshots.keys().next().value; if (oldest) appSnapshots.delete(oldest) }
+    snapshot = new AsyncSnapshot<MacWindow[]>(() => macHelper('windows', [pid]), 200)
+    appSnapshots.set(pid, snapshot)
+  }
+  const windows = await snapshot.get()
+  return pollingPaused ? null : windows.find(w => w.hwnd === id) || null
 }
 export async function findMacWindowedApp(): Promise<MacWindow | null> {
   return (await macWindows().catch(() => [])).find((w) => w.width >= 320 && w.height >= 220 && w.title) || null

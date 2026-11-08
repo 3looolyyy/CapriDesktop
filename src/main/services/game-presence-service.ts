@@ -1,5 +1,5 @@
 import { isMac } from './platform'
-import { macForegroundWindow } from './mac-desktop'
+import { macForegroundWindow, macDesktopPollingPaused } from './mac-desktop'
 import { macGameContext } from './mac-game-context'
 /**
  * Notices any game in the foreground, puts Capri in Gaming Mode and, every so often, has her
@@ -76,10 +76,10 @@ export class GamePresenceService {
   public start(): void {
     if (this.timer || (!isWindows && !isLinux && !isMac)) return
     const poll = async () => {
-      if (this.polling) return
+      if (this.polling || (isMac && macDesktopPollingPaused())) return
       this.polling = true
       try {
-        if (isMac) macGameContext.update(await macForegroundWindow().catch(() => null))
+        if (isMac) { const foreground = await macForegroundWindow().catch(() => null); if (!macDesktopPollingPaused()) macGameContext.update(foreground) }
         else await this.tick()
       } catch (error) { console.warn('[GamePresence] Foreground query failed:', error) }
       finally { this.polling = false }
