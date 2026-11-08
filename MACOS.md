@@ -82,6 +82,9 @@ Current local time/date/day questions are answered from the device clock, includ
 
 Explicit Chrome, Firefox, Safari, Edge, Brave and Opera requests open the named installed browser; a query opens in that browser. Missing apps return a failure. Explorer/File Explorer resolves to Finder, Task Manager to Activity Monitor, Control Panel to System Settings, Notepad to TextEdit and calc to Calculator. Apps are asked to quit normally, allowing save prompts. The coding terminal uses a Unix shell on Mac.
 
+Casual app requests also work: “open Firefox for me, choom” or “heya lwk lets go with Discord and Firefox and ChatGPT”. Common app names and aliases are recognized locally, filler words are removed, and each app in a list opens once. Capri reports each actual launch result. App-only requests do not start Spotify playback or fall back to a website. Unknown or more complex requests continue through the existing AI/app-discovery route. Conversational wrappers such as “heya choom could u please…” also work around explicit commands. Try “fire up Discord”, “get Firefox running”, “I wanna use ChatGPT”, or “would you mind closing Firefox and Discord”. Closing requests ask apps to quit normally; save prompts may remain. Successful app actions get short, varied Capri replies; failures retain the actual error. Questions about an action do not trigger the Mac launch/quit shortcut.
+
+
 Validation: 62 focused tests and type checks pass. Production arm64 packaging and installed signature verification passed. Installed chat answered the current Asia/Riyadh time and launched native Calculator. Windows/Linux runtime behavior remains untested; deferred Paint, ShadowPlay and game integrations remain unsupported on Mac.
 
 ## Upstream 1.0.4 / Mac revision 13
@@ -95,3 +98,11 @@ Native Mac commands now include system volume/mute, battery, disk space, macOS v
 The upstream requirements-storage chooser/move planner is available on Mac, including its speech cache. Review its plan before confirming. A physical external-disk move has not been tested. System Python/FFmpeg installation remains manual; model downloads remain explicit selections.
 
 On Mac, storage moves leave a standalone/shared Ollama library in place. Only model folders already managed under Capri’s selected storage root are eligible to move; a running standalone server must be quit first. Speech caches and Capri’s Python environment can be relocated independently.
+
+
+### Direct Mac commands
+
+Type `open -a "Firefox"` (or another installed app name), `open ~/Downloads`, `open "./my file.txt"`, or `ls -lah ~/Downloads` in Capri chat. `ls` supports `-a`, `-l`, `-h`, and `-1`; relative paths use the selected project folder, or your home folder when none is selected. Quote paths/app names containing spaces. These commands run locally without a web search or cloud interpretation. Shell chaining, substitutions and other `open`/`ls` options are not supported by this shortcut. Missing apps/paths return a failure rather than searching for them online. Natural app requests also recognize installed Mac bundle names beyond built-in aliases.
+
+
+App names tolerate small spelling mistakes, including swapped letters: “opne firfox and discrod for me choom” opens Firefox and Discord. Exact installed names take priority. A close match shared by multiple apps asks you to name the intended app before any action in the list runs. Short abbreviations, unrelated words and file paths are not guessed. `open -a` uses the same app-name matching.

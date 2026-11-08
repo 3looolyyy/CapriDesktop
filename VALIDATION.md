@@ -62,3 +62,37 @@ New regression tests cover a stale curious pose, a 20-second reply without deadl
 AgentManager also releases its busy latch when a prompt promise completes or fails without a session-finished event, while preserving a concurrent editor task. Two direct AgentManager lifecycle regressions cover those paths. Total: 62 tests. A due check resumes after actual task/script activity ends without starting another full interval.
 
 Installed-app live cadence verification: observed two automatic screen captures 60.188 seconds apart with game mode active and a one-minute interval. The first posted a comment; the second was recorded as a duplicate and was not spoken again. This verifies scan cadence independently of audible-comment frequency. The old profile had both comment intervals set to zero; the requested one-minute game interval was restored through Settings.
+
+
+### Casual app request understanding — 2026-11-08
+
+- Type checks and production/arm64 app-directory build pass; 65 automated tests pass (62 platform/feature, 1 scanner, 2 agent lifecycle).
+- Added coverage for conversational fillers, coordinated app lists, aliases, duplicate names, ordinary questions/search/music requests, actual failures and cancellation between launches.
+- Installed in place at `/Applications/Capri Desktop.app`; both signatures verified, designated signing requirement unchanged, version remains `1.0.4-mac.15`.
+- Live Dev Deck tests: “open firefox for me choom” opened Firefox; “heya lwk lets go with discord and firefox and chatgpt” opened all three apps with separate successful tool results and confirmations.
+- Voice transcription itself was not retested; recognized voice text uses the same request route. Windows/Linux runtime remains untested. No new DMG or release was created for this patch.
+
+
+### Conversational commands and action personality — 2026-11-08
+
+- Type checks, production build and signed arm64 app-directory build pass. All 68 tests pass, including command wrappers, ordinary questions, mixed-action rejection, launch/quit intent and truthful varied replies.
+- Updated the installed app in place with the same version and designated signing requirement; signature verification passes.
+- Live test: “heya choom could u please open Firefox for me” opened Firefox and replied “Done, choom—Firefox's open. What are we browsing?”
+- Multiple-app quit was tested with pure parsing/outcome tests, without closing the user's working apps. Voice transcription and Windows/Linux runtime were not retested. No DMG/release or PR push was performed.
+
+
+### Native app and directory commands — 2026-11-08
+
+- All 71 tests pass; full type checks, production build and signed arm64 app-directory build pass.
+- Added command parsing tests for quoted arguments, listing flags, malformed input and rejected shell syntax; real temporary-directory tests cover hidden filenames, spaces, relative/home paths and missing-path failures without browser fallback.
+- Installed Mac app names extend natural-language matching, while ordinary chat avoids rescanning application directories.
+- Live installed-app checks: `ls /Applications` returned the actual local app listing; `open -a "Firefox"` completed the native launch tool and confirmed success in Capri's voice. No web search was used.
+- Updated in place with the same version/signing requirement; signature verification passes. Windows/Linux runtime and voice transcription not retested. No new DMG/release or PR push.
+
+
+### App spelling tolerance — 2026-11-08
+
+- All 72 tests pass; full type checks, production and arm64 app-directory builds pass.
+- Focused tests cover missing/swapped letters, explicit command typos, installed-name priority, ambiguous choices with no partial execution, unrelated words and unchanged file paths.
+- Live installed-app test: `opne firfox and discrod for me choom` launched Firefox and Discord through separate successful native tool calls and returned a combined Capri confirmation.
+- Updated in place with unchanged version/designated signing requirement. Voice transcription and Windows/Linux runtime not retested; no PR push or new DMG/release.

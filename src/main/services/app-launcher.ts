@@ -137,17 +137,7 @@ export async function openInstalledApp(request: string): Promise<string | null> 
   }
 
   if(isMac) {
-    const bundles:InstalledApp[]=[]
-    const scan=(dir:string,depth=0)=>{
-      if(depth>2) return
-      try {for(const item of fs.readdirSync(dir,{withFileTypes:true})) {
-        if(!item.isDirectory()) continue
-        const full=path.join(dir,item.name)
-        if(item.name.endsWith('.app')) bundles.push({name:item.name.slice(0,-4),file:full})
-        else scan(full,depth+1)
-      }} catch {}
-    }
-    for(const dir of ['/Applications','/System/Applications',path.join(os.homedir(),'Applications')]) scan(dir)
+    const bundles = macInstalledApps()
     const match=bestAppMatch(macAppName(request),bundles)
     return match?.file && await launchMacApp(match.file) ? match.name : null
   }
@@ -155,6 +145,25 @@ export async function openInstalledApp(request: string): Promise<string | null> 
   if (entry) return launchDesktopEntry(entry) ? entry.name : null
   const onPath = /^[\w.+-]+$/.test(request) ? findOnPath(request.toLowerCase()) || findOnPath(request) : null
   return onPath && (await startFile(onPath)) ? path.basename(onPath) : null
+}
+
+/** Also used by command understanding, so real installed bundle names work beyond built-in aliases. */
+export function macInstalledApps(): InstalledApp[] {
+  if (!isMac) return []
+  const bundles: InstalledApp[] = []
+  const scan = (dir: string, depth = 0) => {
+    if (depth > 2) return
+    try {
+      for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!item.isDirectory()) continue
+        const full = path.join(dir, item.name)
+        if (item.name.endsWith('.app')) bundles.push({ name: item.name.slice(0, -4), file: full })
+        else scan(full, depth + 1)
+      }
+    } catch { /* An unreadable application directory does not block the other directories. */ }
+  }
+  for (const dir of ['/Applications', '/System/Applications', path.join(os.homedir(), 'Applications')]) scan(dir)
+  return bundles
 }
 
 /**

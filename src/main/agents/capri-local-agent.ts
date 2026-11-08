@@ -1,3 +1,8 @@
+import { parseDesktopCommand } from '../../shared/mac-desktop-command'
+import { runDesktopCommand } from '../services/mac-desktop-command'
+import { macInstalledApps } from '../services/app-launcher'
+import { normalizeCommandRequest } from '../../shared/request-language'
+import { parseAppActionRequest, executeAppLaunches, appActionReply, resolveAppSpelling, type AppActionOutcome } from '../../shared/app-requests'
 import { parseGameModeCommand } from '../../shared/mac-feature-policy'
 import { parseMacSystemCommand, isMacSystemRequest } from '../../shared/mac-system-commands'
 import { runMacSystemCommand } from '../services/mac-system-service'
@@ -172,7 +177,6 @@ const RECOMMENDATION_REPEAT_MS = 15000
 // "Abrí", "abrime" and the other languages' verbs too. Not "ejecutá" or "run": those also mean commands
 const APP_LAUNCH_VERBS = 'abre|abrir|abr[ií]|abr[ií]me|abra|open|launch|inicia|inici[aá]|iniciar|lanz[aá]|arranc[aá]|entra\\s+a|jugar|juega|jug[aá]|play|ouvre|lance|öffne|starte|apri|avvia|открой|запусти'
 const APP_LAUNCH_VERB_START = new RegExp(`^(?:${APP_LAUNCH_VERBS})\\s+`, 'i')
-const APP_LAUNCH_VERB_ANYWHERE = new RegExp(`(?:^|[\\s,])(?:${APP_LAUNCH_VERBS})\\s+(?:a\\s+|al\\s+|el\\s+|la\\s+|the\\s+)?(.+)`, 'i')
 
 const GAMING_MAX_TOKENS = 120
 
@@ -331,6 +335,7 @@ export class CapriLocalAgent extends EventEmitter {
       }
     }
 
+    if (isMac) prompt = normalizeCommandRequest(prompt)
     const trimmed = prompt.trim()
     const originalLower = trimmed.toLowerCase()
 
@@ -340,6 +345,22 @@ export class CapriLocalAgent extends EventEmitter {
 
     this.replyLang = activeLang
     const isSpanish = activeLang === 'es'
+
+    const desktopCommand = isMac ? parseDesktopCommand(trimmed) : null
+    if (desktopCommand) {
+      if (desktopCommand.kind === 'app') {
+        const match = resolveAppSpelling(desktopCommand.target, macInstalledApps().map(app => app.name))
+        if (match.choices) { this.emitAssistant(`Which app did you mean, choom: ${match.choices.join(' or ')}?`); this.finishSession(); return }
+        desktopCommand.target = match.name || desktopCommand.target
+        const result = await this.runSingleTool('open_application', { appOrUrl: desktopCommand.target, launchOnly: true, askIfMissing: false }, projectPath)
+        if (!this.isCancelled) this.emitAssistant(appActionReply('open', [{ name: desktopCommand.target, ...result }], activeLang))
+      } else {
+        const result = await runDesktopCommand(desktopCommand, projectPath)
+        if (!this.isCancelled) this.emitAssistant(result.output)
+      }
+      this.finishSession()
+      return
+    }
 
     const norm = originalLower
       .replace(/^(?:hey\s+|hola\s+)?(?:capri|companion)[,:\s]*/i, '')
@@ -1162,6 +1183,23 @@ export class CapriLocalAgent extends EventEmitter {
         this.finishSession()
         return
       }
+    }
+
+// Resolve casual app lists before music/browser heuristics can consume the whole sentence.
+    const directAppRequest = isMac ? parseAppActionRequest(trimmed, [], false) || (/^(?:open|launch|start|bring|pull|close|quit|exit)\b/i.test(trimmed)
+      ? parseAppActionRequest(trimmed, macInstalledApps().map(app => app.name)) : null) : null
+    if (directAppRequest) {
+      if (directAppRequest.clarification) { this.emitAssistant(directAppRequest.clarification); this.finishSession(); return }
+      const outcomes: AppActionOutcome[] = []
+      await executeAppLaunches(directAppRequest.apps, async name => {
+        const result = await this.runSingleTool(directAppRequest.action === 'open' ? 'open_application' : 'close_application',
+          directAppRequest.action === 'open' ? { appOrUrl: name, launchOnly: true, askIfMissing: false } : { appName: name }, projectPath)
+        outcomes.push({ name, ...result })
+        return result
+      }, () => this.isCancelled)
+      if (!this.isCancelled && outcomes.length) this.emitAssistant(appActionReply(directAppRequest.action, outcomes, activeLang))
+      this.finishSession()
+      return
     }
 
 // Direct Song & Video Queue Interceptor (YouTube & Spotify)
@@ -2238,7 +2276,9 @@ LANGUAGE RULE: ${langDirective}`
     }
 
     // Launch Application, Game, or Website (e.g. "abre el lol", "abre cyberpunk", "abre chrome y entra a youtube", "abre steam", "abre obs", "abre calc")
-    const launchMatch = p.match(APP_LAUNCH_VERB_ANYWHERE)
+    const launchMatch = isMac
+      ? (/\b(?:and|then|plus)\b|[,&]/i.test(p) ? null : normalizeCommandRequest(p).match(new RegExp(`^(?:${APP_LAUNCH_VERBS})\\s+(?:a\\s+|al\\s+|el\\s+|la\\s+|the\\s+)?(.+)`, 'i')))
+      : p.match(new RegExp(`(?:^|[\\s,])(?:${APP_LAUNCH_VERBS})\\s+(?:a\\s+|al\\s+|el\\s+|la\\s+|the\\s+)?(.+)`, 'i'))
     const isDirectKeyword = /^(?:youtube|steam|spotify|discord|chrome|calc|calculadora|notepad|obs|lol|valorant|cyberpunk|palworld|roblox|minecraft|fortnite)$/i.test(p)
 
     if (launchMatch || isDirectKeyword) {
@@ -2327,11 +2367,11 @@ LANGUAGE RULE: ${langDirective}`
 
       const launched = await this.runSingleTool(
         'open_application',
-        { appOrUrl, url },
+        { appOrUrl, url, ...(isMac && !url ? { launchOnly: true, askIfMissing: false } : {}) },
         projectPath,
         `Breaching target: Launching "${appOrUrl}"... Don't make me wait!`
       )
-      if (isMac) { this.emitAssistant(launched.output); this.finishSession(); return }
+      if (isMac) { this.emitAssistant(appActionReply('open', [{ name: appOrUrl, ...launched }], this.replyLang || 'en')); this.finishSession(); return }
       if (launched.success) {
         this.emitAssistant(
           isSpanish
@@ -2356,9 +2396,11 @@ LANGUAGE RULE: ${langDirective}`
         ''
       )
       .trim()
-    const closeMatch = closeNorm.match(
+    const closePattern =
       /(?:cierra|cerrar|close|kill|termina|terminar|apaga|apagar|quit|exit|shut\s*down|turn\s*off)\s+(?:la\s+app\s+|la\s+aplicacion\s+|el\s+programa\s+|el\s+juego\s+|the\s+game\s+|el\s+|la\s+|the\s+|mi\s+|my\s+)?(.+)/i
-    )
+    const closeMatch = isMac
+      ? (/\b(?:and|then|plus)\b|[,&]/i.test(closeNorm) ? null : closeNorm.match(new RegExp(`^${closePattern.source}`, 'i')))
+      : closeNorm.match(closePattern)
     if (closeMatch) {
       const targetStr = closeMatch[1].replace(/[?.!¡¿]+$/g, '').trim()
       let appName = targetStr

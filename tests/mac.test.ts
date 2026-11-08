@@ -1,3 +1,8 @@
+import { parseDesktopCommand } from '../src/shared/mac-desktop-command'
+import { runDesktopCommand, desktopCommandPath } from '../src/main/services/mac-desktop-command'
+import { normalizeCommandRequest } from '../src/shared/request-language'
+import { bestAppMatch } from '../src/main/services/app-finder'
+import { resolveAppSpelling, parseAppActionRequest, appActionReply, parseAppLaunchRequest, cleanLaunchTarget, executeAppLaunches } from '../src/shared/app-requests'
 import { parseGameModeCommand } from '../src/shared/mac-feature-policy'
 import { gameCompanionState } from '../src/shared/companion-appearance'
 import { MacGameContext, macGameContext } from '../src/main/services/mac-game-context'
@@ -33,7 +38,7 @@ import { parsePlacementCommand, anchorBounds } from '../src/shared/placement'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { tmpdir, homedir } from 'node:os'
 import path from 'node:path'
 import { platformCapabilities, updateDelivery, captureCrop, recommendedLocalModel, offerDesktopTools } from '../src/shared/platform-policy'
 import { startCommand, listProcessNames, findOnPath } from '../src/main/services/platform'
@@ -870,4 +875,137 @@ test('only explicit Mac mode commands toggle the mode; questions, complaints and
   for(const input of ['turn off game mode','game mode off','disable gaming mode','could you please turn gaming mode off?']) assert.equal(parseGameModeCommand(input),false)
   for(const input of ['game mode','turn on gaming mode','game mode on','could you please enable game mode?']) assert.equal(parseGameModeCommand(input),true)
   for(const input of ['why does it exit game mode?',"don't turn off game mode",'stop turning game mode off','game mode still does not check every minute','tell me what game mode does']) assert.equal(parseGameModeCommand(input),null)
+})
+
+
+test('casual launch requests preserve app names and understand coordinated apps', () => {
+  assert.deepEqual(parseAppLaunchRequest('open firefox for me choom'), ['Firefox'])
+  assert.deepEqual(parseAppLaunchRequest('heya lwk lets go with discord and firefox and chatgpt'), ['Discord', 'Firefox', 'ChatGPT'])
+  assert.deepEqual(parseAppLaunchRequest('Hey Capri, could you please open Firefox, Discord, and Chat GPT for me, please, choom?'), ['Firefox', 'Discord', 'ChatGPT'])
+  assert.deepEqual(parseAppLaunchRequest('open Visual Studio Code and then open Activity Monitor'), ['Visual Studio Code', 'Activity Monitor'])
+  assert.deepEqual(parseAppLaunchRequest('launch Firefox plus firefox & Discord'), ['Firefox', 'Discord'])
+  assert.equal(cleanLaunchTarget('Firefox for me, please, choom!'), 'Firefox')
+  assert.equal(cleanLaunchTarget('Thanks'), 'Thanks')
+  assert.equal(bestAppMatch('Firefox for me choom', [{ name: 'Firefox' }, { name: 'Firefox Uninstaller' }])?.name, 'Firefox')
+  assert.deepEqual(parseAppLaunchRequest('could u open up fire fox for me pls'), ['Firefox'])
+  assert.deepEqual(parseAppLaunchRequest('would you mind opening Discord please?'), ['Discord'])
+})
+
+test('app understanding leaves questions, songs, searches and unrelated actions alone', () => {
+  for (const prompt of [
+    'when was PlayStation released?', 'how do I open Firefox?', "don't open Firefox", 'if I say open Firefox',
+    'open Firefox and search for cats', 'open Spotify and play Heartbeat', 'play Discord by Someone',
+    'search Firefox for cats', 'open Firefox settings', 'lets go with unknown app', 'open Firefox or Safari',
+    'write a macro to open Firefox', 'open Firefox and close Discord', 'open Firefox and not Discord', 'open constructor', 'open toString'
+  ]) assert.equal(parseAppLaunchRequest(prompt), null, prompt)
+})
+
+test('multiple launches report real outcomes and stop after cancellation', async () => {
+  const calls: string[] = []
+  const results = await executeAppLaunches(['Firefox', 'Discord', 'ChatGPT'], async name => {
+    calls.push(name)
+    if (name === 'Discord') throw new Error('missing')
+    return { success: name === 'Firefox', output: name === 'Firefox' ? 'Opened Firefox.' : 'ChatGPT is unavailable.' }
+  }, () => false)
+  assert.deepEqual(calls, ['Firefox', 'Discord', 'ChatGPT'])
+  assert.deepEqual(results, ['Opened Firefox.', 'Could not open Discord.', 'ChatGPT is unavailable.'])
+  let cancelled = false
+  calls.length = 0
+  await executeAppLaunches(['Firefox', 'Discord'], async name => {
+    calls.push(name); cancelled = true
+    return { success: true, output: 'Opened Firefox.' }
+  }, () => cancelled)
+  assert.deepEqual(calls, ['Firefox'])
+})
+
+
+test('conversational wrappers normalize explicit commands without rewriting questions or search terms', () => {
+  assert.equal(normalizeCommandRequest('heya choom could u please set volume to 35 percent'), 'set volume to 35 percent')
+  assert.equal(normalizeCommandRequest('yo lwk can u search for thank you choom'), 'search for thank you choom')
+  assert.equal(normalizeCommandRequest('would you mind closing Discord?'), 'close Discord?')
+  assert.equal(normalizeCommandRequest('I wanna play Heartbeat on Spotify'), 'play Heartbeat on Spotify')
+  for (const question of ['hey choom when was PlayStation released?', 'can you tell me about Firefox?', 'please do not open Discord', 'what happens if I open Firefox?', 'I wish Firefox was open']) {
+    assert.equal(normalizeCommandRequest(question), question)
+  }
+})
+
+test('casual app actions distinguish launch and normal quit, and reject mixed commands', () => {
+  assert.deepEqual(parseAppActionRequest('yo fire up Discord for me choom'), { action: 'open', apps: ['Discord'] })
+  assert.deepEqual(parseAppActionRequest('could u please get Firefox running?'), { action: 'open', apps: ['Firefox'] })
+  assert.deepEqual(parseAppActionRequest('I wanna use Chat GPT'), { action: 'open', apps: ['ChatGPT'] })
+  assert.deepEqual(parseAppActionRequest('would you mind closing Firefox and Discord for me choom?'), { action: 'close', apps: ['Firefox', 'Discord'] })
+  assert.equal(parseAppActionRequest('close Firefox and open Discord'), null)
+  assert.equal(parseAppActionRequest('close Discord and not Firefox'), null)
+  assert.equal(parseAppLaunchRequest('quit Firefox'), null)
+})
+
+test('Capri action replies add personality only to verified successes and preserve failures', () => {
+  const success = { name: 'Firefox', success: true, output: 'Opened Firefox.' }
+  const failed = { name: 'Discord', success: false, output: 'Discord is unavailable.' }
+  assert.equal(appActionReply('open', [success], 'en', 0), "Done, choom—Firefox's open. What are we browsing?")
+  assert.notEqual(appActionReply('open', [success], 'en', 0), appActionReply('open', [success], 'en', 1))
+  assert.equal(appActionReply('open', [failed]), 'Discord is unavailable.')
+  const partial = appActionReply('open', [success, failed], 'en', 2)
+  assert.match(partial, /Firefox.*ready/)
+  assert.match(partial, /Discord is unavailable/)
+  assert.doesNotMatch(partial, /Discord.*(?:open|ready|up)/)
+  assert.match(appActionReply('close', [success]), /Asked Firefox to quit.*save prompts/)
+  assert.doesNotMatch(appActionReply('close', [success]), /closed/i)
+  assert.match(appActionReply('open', [success], 'es', 0), /Listo, choom/)
+})
+
+
+test('Mac terminal-style commands parse arguments without executing shell syntax', () => {
+  assert.deepEqual(parseDesktopCommand('ls'), { kind: 'ls', flags: [], target: '.' })
+  assert.deepEqual(parseDesktopCommand('ls -lah "~/My Folder"'), { kind: 'ls', flags: ['-lah'], target: '~/My Folder' })
+  assert.deepEqual(parseDesktopCommand('open -a "Firefox"'), { kind: 'app', target: 'Firefox' })
+  assert.deepEqual(parseDesktopCommand('open ~/Downloads'), { kind: 'path', target: '~/Downloads' })
+  assert.deepEqual(parseDesktopCommand('open "./my file.txt"'), { kind: 'path', target: './my file.txt' })
+  assert.equal(parseDesktopCommand('how do I use ls?'), null)
+  assert.equal(parseDesktopCommand('open Firefox and Discord'), null)
+  for (const command of ['ls; rm test', 'ls $(whoami)', 'ls | cat', 'open -a Firefox; echo test', 'ls -R /', 'open -a', 'ls "unfinished', 'ls a b']) {
+    assert.equal(parseDesktopCommand(command)?.kind, 'error', command)
+  }
+})
+
+test('native listing returns real local files and reports missing paths without web fallback', async () => {
+  const folder = path.join(temp, 'desktop-command-test')
+  mkdirSync(folder)
+  writeFileSync(path.join(folder, 'a file.txt'), 'test')
+  writeFileSync(path.join(folder, '.hidden'), 'test')
+  const listed = await runDesktopCommand({ kind: 'ls', flags: ['-a'], target: folder }, '')
+  assert.equal(listed.success, true)
+  assert.match(listed.output, /a file.txt/)
+  assert.match(listed.output, /\.hidden/)
+  assert.equal((await runDesktopCommand({ kind: 'ls', flags: [], target: path.join(folder, 'missing') }, '')).success, false)
+  const before = opened.length
+  assert.equal((await runDesktopCommand({ kind: 'path', target: path.join(folder, 'missing') }, '')).success, false)
+  assert.equal(opened.length, before)
+  assert.equal(desktopCommandPath('./a file.txt', folder), path.join(folder, 'a file.txt'))
+  assert.equal(desktopCommandPath('~/Downloads', folder), path.join(homedir(), 'Downloads'))
+})
+
+test('installed app names extend command understanding without inventing app searches', () => {
+  assert.deepEqual(parseAppActionRequest('open "Firefox Developer Edition" for me choom', ['Firefox Developer Edition']), { action: 'open', apps: ['Firefox Developer Edition'] })
+  assert.deepEqual(parseAppActionRequest('launch Obsidian and Discord', ['Obsidian']), { action: 'open', apps: ['Obsidian', 'Discord'] })
+  assert.equal(parseAppActionRequest('open Firefox and search for games', ['Firefox']), null)
+  assert.equal(parseAppActionRequest('what is Obsidian?', ['Obsidian']), null)
+})
+
+
+test('app typos accept unique close matches, including transpositions, without rewriting paths or questions', () => {
+  for (const [typed, expected] of [['firfox', 'Firefox'], ['discrod', 'Discord'], ['spotfiy', 'Spotify'], ['chatgtp', 'ChatGPT']]) {
+    assert.equal(resolveAppSpelling(typed).name, expected)
+    assert.deepEqual(parseAppActionRequest(`opne ${typed} for me choom`), { action: 'open', apps: [expected] })
+  }
+  assert.deepEqual(parseAppActionRequest('launch firfox and discrod'), { action: 'open', apps: ['Firefox', 'Discord'] })
+  assert.deepEqual(resolveAppSpelling('ff'), {})
+  assert.deepEqual(resolveAppSpelling('completelyunknown'), {})
+  assert.equal(parseAppActionRequest('what is firfox?'), null)
+  assert.equal(resolveAppSpelling('firfox', ['Firfox']).name, 'Firfox')
+  assert.deepEqual(resolveAppSpelling('raycast', ['Raycast']).name, 'Raycast')
+  const ambiguous = parseAppActionRequest('open Firefox and stome', ['Stone', 'Store'])
+  assert.deepEqual(ambiguous?.apps, [])
+  assert.match(ambiguous?.clarification || '', /Stone or Store/)
+  assert.deepEqual(parseDesktopCommand('open ~/Documnts'), { kind: 'path', target: '~/Documnts' })
 })

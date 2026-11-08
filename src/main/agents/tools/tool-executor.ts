@@ -652,6 +652,13 @@ export class ToolExecutor {
     }
 
     try {
+      // A request to open a list of apps must not resume music or launch a website fallback.
+      if (isMac && args.launchOnly === true && !rawUrl && !rawQuery) {
+        const name = cleanAppRequest(rawTarget)
+        const installed = await openInstalledApp(name)
+        const ok = Boolean(installed) || await launchMacApp(name)
+        return { success: ok, output: ok ? `Opened ${installed || name}.` : `Could not find or open ${name} on this Mac.` }
+      }
       // Named browsers must open that Mac app, not silently open the default browser.
       if(isMac && /^(?:google chrome|chrome|firefox|safari|microsoft edge|edge|msedge|brave|brave browser|opera|opera gx|apple music)$/.test(target.replace(/\.exe$/i,''))) {
         const url=rawUrl || (rawQuery ? `https://www.google.com/search?q=${encodeURIComponent(rawQuery)}` : undefined)
