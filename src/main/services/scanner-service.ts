@@ -340,9 +340,9 @@ export class ScannerService {
   /**
    * Detects available vision model in Ollama or cloud provider (Gemini, Claude, GPT, qwen2.5-vl, llava, etc.)
    */
-  public async detectVisionModel(): Promise<string | null> {
+  public async detectVisionModel(localOnly = false): Promise<string | null> {
     try {
-      if (isCloudMode()) {
+      if (!localOnly && isCloudMode()) {
         const settings = getLlmSettings()
         return settings.model || 'cloud-vision'
       }
@@ -423,7 +423,7 @@ export class ScannerService {
     try {
       const local = await ollamaService.ensureRunning(true)
       if (!local.running) throw new Error('Local vision requires Ollama. Open Ollama and try again; your cloud text model cannot inspect screenshots.')
-      const model = await this.detectVisionModel()
+      const model = await this.detectVisionModel(true)
       if (model) {
         console.log(`[ScannerService] Preloading vision model ${model} into GPU VRAM...`)
         await llmFetch('http://127.0.0.1:11434/api/generate', {
@@ -506,7 +506,7 @@ export class ScannerService {
       if (visionMode !== 'cloud') {
         const local=await ollamaService.ensureRunning(true)
         if (!local.running) throw new Error('Local vision requires Ollama. Open Ollama or select a cloud provider.')
-        visionModel=await this.detectVisionModel() || ''
+        visionModel=await this.detectVisionModel(true) || ''
         if (!visionModel) throw new Error('No local vision model is installed. Select cloud vision or install an image-capable Ollama model.')
       }
 
@@ -778,7 +778,7 @@ Return ONLY valid JSON:
       if (isGeneric || !vecResult?.isLineDrawing) {
         const local = await ollamaService.ensureRunning(true)
       if (!local.running) throw new Error('Local vision requires Ollama. Open Ollama and try again; your cloud text model cannot inspect screenshots.')
-        const visionModel = await this.detectVisionModel()
+        const visionModel = await this.detectVisionModel(true)
         if (visionModel) {
           const visionPrompt = `You are an expert design, sketch, and emblem analysis AI.
 Analyze the drawing, logo, emblem, symbol, or illustration inside this frame carefully to identify what it is.
