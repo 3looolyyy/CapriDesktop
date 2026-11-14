@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react'
-import { AppWindow, Apple, Cpu, Heart, Languages, Sliders, Sparkles, X } from 'lucide-react'
+import { AppWindow, Apple, Cpu, Gauge, Heart, Languages, Sliders, Sparkles, X } from 'lucide-react'
 import { AgentSettingsModal } from './AgentSettingsModal'
 import { VoiceSettingsModal } from '../companion/VoiceSettingsModal'
 import { LanguageSettingsModal } from './LanguageSettingsModal'
 import { AppsModal } from './AppsModal'
 import { SupportersPanel } from './SupportersPanel'
+import { BenchmarkSettings } from './BenchmarkSettings'
 import { MacSettings } from '../components/MacSettings'
 import { BehaviorSettings } from '../companion/BehaviorSettings'
 import { useT, useUiLang } from '../utils/useUiLang'
 
-export type SettingsTab = 'ai' | 'capri' | 'voice' | 'language' | 'apps' | 'supporters' | 'mac'
+export type SettingsTab = 'ai' | 'capri' | 'voice' | 'language' | 'apps' | 'benchmark' | 'supporters' | 'mac'
 
 interface SettingsHubProps {
   isOpen: boolean
@@ -40,6 +41,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({ isOpen, tab, onTabChan
     { id: 'voice', label: t('deck_voiceConfig'), icon: <Sliders size={14} /> },
     { id: 'language', label: t('deck_language'), icon: <Languages size={14} /> },
     { id: 'apps', label: t('deck_apps'), icon: <AppWindow size={14} /> },
+    { id: 'benchmark', label: t('bm_tab'), icon: <Gauge size={14} /> },
     ...(isMac ? [{ id: 'mac' as const, label: 'Mac & Spotify', icon: <Apple size={14} /> }] : []),
     { id: 'supporters', label: 'Supporters', icon: <Heart size={14} /> }
   ]
@@ -104,6 +106,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({ isOpen, tab, onTabChan
             {tab === 'voice' && <VoiceSettingsModal isOpen embedded onClose={onClose} />}
             {tab === 'language' && <LanguageSettingsModal isOpen embedded onClose={onClose} />}
             {tab === 'apps' && <AppsModal isOpen embedded onClose={onClose} />}
+            {tab === 'benchmark' && <BenchmarkSettings />}
             {tab === 'mac' && isMac && (
               <div className="cp-scroll flex-1 min-h-0 overflow-y-auto p-5">
                 <MacSettings />

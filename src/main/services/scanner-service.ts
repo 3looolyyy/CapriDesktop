@@ -1,6 +1,6 @@
 import { macGameContext } from './mac-game-context'
 import { localAIEnabled } from './local-ai-policy'
-import { localVisionModels, describeLocalImage, VISION_NUM_CTX } from './local-vision'
+import { localVisionModels, describeLocalImage, ollamaErrorText, VISION_NUM_CTX } from './local-vision'
 import { scannerVisionMode, captureCrop } from '../../shared/platform-policy'
 import { llmFetch, isCloudMode, isAiAppMode, getLlmSettings, warmQuickAnswers, cloudVisionModel, describeCloudImage } from './llm-gateway'
 import { LANGUAGE_NAMES } from './game/game-commentary'
@@ -812,6 +812,8 @@ Analyze the drawing, logo, emblem, symbol, or illustration inside this frame car
             if (visionResp.ok) {
               const visionData = (await visionResp.json()) as any
               visualDescription = (visionData?.response || '').trim()
+            } else {
+              console.warn(`[ScannerService] Vision model failed in learnDrawing (${visionResp.status}):`, await ollamaErrorText(visionResp))
             }
           } catch (e) {
             console.warn('[ScannerService] Vision model call error in learnDrawing:', e)
@@ -1593,6 +1595,8 @@ Be specific and direct.`
           if (visionResp.ok) {
             const visionData = (await visionResp.json()) as any
             visualDescription = (visionData?.response || '').trim()
+          } else {
+            console.warn(`[ScannerService] Vision model failed (${visionResp.status}):`, await ollamaErrorText(visionResp))
           }
         } catch (e) {
           console.warn('[ScannerService] Vision model perception warning:', e)

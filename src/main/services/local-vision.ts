@@ -1,3 +1,5 @@
+import { nativeImage } from 'electron'
+
 /** Vision always uses the local Ollama endpoint, independently of cloud text settings. */
 
 /**
@@ -12,17 +14,47 @@ export async function localVisionModels(): Promise<string[]> {
   const data = await response.json() as {models?: {name:string}[]}
   return (data.models || []).map(model=>model.name)
 }
+export async function ollamaErrorText(response: Response): Promise<string> {
+  let reason = ''
+  try {
+    const raw = await response.text()
+    try {
+      reason = String((JSON.parse(raw) as { error?: unknown }).error || raw)
+    } catch {
+      reason = raw
+    }
+  } catch {}
+  return reason.replace(/\s+/g, ' ').trim().slice(0, 240)
+}
+
+function shrinkImage(base64: string, maxSide: number): string {
+  const image = nativeImage.createFromBuffer(Buffer.from(base64, 'base64'))
+  const { width, height } = image.getSize()
+  if (!width || !height || Math.max(width, height) <= maxSide) return base64
+  const scale = maxSide / Math.max(width, height)
+  return image.resize({ width: Math.round(width * scale), height: Math.round(height * scale), quality: 'good' }).toJPEG(75).toString('base64')
+}
+
 export async function describeLocalImage(model: string, base64: string, prompt: string, releaseAfterUse: boolean): Promise<string> {
-  const response = await fetch('http://127.0.0.1:11434/api/generate', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({model, images:[base64], prompt, stream:false, keep_alive:releaseAfterUse ? 0 : '15m', options:{temperature:0.2,num_predict:220,num_ctx:VISION_NUM_CTX}}),
-    signal: AbortSignal.timeout(90000),
-  })
-  if (!response.ok) throw new Error(`Local vision model failed (${response.status}). Check that the installed model supports images.`)
-  const data = await response.json() as {response?:string}
-  const description = data.response?.trim()
-  if (!description) throw new Error('The local vision model returned an empty response.')
-  return description
+  // The entire screen as an image can be over the context limit, so this shrinks the image once, and then again if ollama still refuses it
+  const sizes = [/qwen[23](?:\.5)?-?vl/i.test(model) ? 1280 : 768, 512]
+  for (let attempt = 0; attempt < sizes.length; attempt++) {
+    const response = await fetch('http://127.0.0.1:11434/api/generate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model, images:[shrinkImage(base64, sizes[attempt])], prompt, stream:false, keep_alive:releaseAfterUse ? 0 : '15m', options:{temperature:0.2,num_predict:220,num_ctx:VISION_NUM_CTX}}),
+      signal: AbortSignal.timeout(90000),
+    })
+    if (!response.ok) {
+      const reason = await ollamaErrorText(response)
+      if (response.status === 400 && /context size/i.test(reason) && attempt < sizes.length - 1) continue
+      throw new Error(`Local vision model failed (${response.status}). ${reason || 'Check that the installed model supports images.'}`)
+    }
+    const data = await response.json() as {response?:string}
+    const description = data.response?.trim()
+    if (!description) throw new Error('The local vision model returned an empty response.')
+    return description
+  }
+  throw new Error('The local vision model could not read the image.')
 }
 
 export function isScreenQuestion(text: string): boolean {
