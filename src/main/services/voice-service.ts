@@ -475,6 +475,7 @@ export class VoiceService {
     if (targetLang) {
       ttsArgs.push('--lang', targetLang)
     }
+    if (opts.fresh) ttsArgs.push('--no-cache')
 
     const ttsStartedAt = Date.now()
     try {

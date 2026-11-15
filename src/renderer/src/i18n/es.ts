@@ -506,5 +506,6 @@ export const es: Messages = {
   bm_visionHelp: 'Una prueba aparte para quien usa más sus ojos: toma una captura y mide lo que tarda el modelo de visión en describirla.',
   bm_runVision: 'Ejecutar prueba de visión',
   bm_visionRow: 'Captura de pantalla + modelo de visión',
-  bm_visionNote: 'La primera mirada carga el modelo y no cuenta.'
+  bm_visionNote: 'La primera mirada carga el modelo y no cuenta.',
+  bm_busy: 'La prueba anterior aún está terminando. Espera un momento y vuelve a ejecutarla.'
 }

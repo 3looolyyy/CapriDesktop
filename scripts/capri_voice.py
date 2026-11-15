@@ -513,7 +513,7 @@ def synthesize_fish_audio(text: str, out_path: str, fish_cfg: dict, synth_preset
                 pass
         return False
 
-async def synthesize_speech(text: str, out_path: str, lang_override: str = None):
+async def synthesize_speech(text: str, out_path: str, lang_override: str = None, use_cache: bool = True):
     cleaned = clean_text_for_speech(text)
     if not cleaned:
         cleaned = "Standing by, choomba!"
@@ -563,30 +563,32 @@ async def synthesize_speech(text: str, out_path: str, lang_override: str = None)
     # Disk cache lookup with provider partition and ttl handling
     cache_dir = os.path.join(VOICE_DIR, "cache")
     CACHE_TTL_SECONDS = 30 * 24 * 3600  # phrases are deterministic: keep them for 30 days
-    try:
-        os.makedirs(cache_dir, exist_ok=True)
-        fish_id = ""
-        if provider in ("fish-audio", "fish_audio", "fishaudio"):
-            fcfg = cfg.get("fish_audio", {}) or {}
-            fish_id = f"{fcfg.get('reference_id', '')}|{fcfg.get('model', '')}"
-        raw_key = f"{provider}|{cleaned.lower()}|{voice}|{pitch}|{rate}|{synth_preset}|{fish_id}"
-        cache_hash = hashlib.md5(raw_key.encode("utf-8")).hexdigest()
-        cached_file = os.path.join(cache_dir, f"{cache_hash}.mp3")
-        if os.path.exists(cached_file) and os.path.getsize(cached_file) > 1024:
-            # Verify ttl – discard stale files
-            mtime = os.path.getmtime(cached_file)
-            if time.time() - mtime < CACHE_TTL_SECONDS:
-                shutil.copyfile(cached_file, out_path)
-                print(json.dumps({"success": True, "path": out_path, "voice": voice, "cached": True, "provider": provider}))
-                return
-            else:
-                # Stale cache – remove it so a fresh request happens
-                try:
-                    os.remove(cached_file)
-                except Exception:
-                    pass
-    except Exception:
-        cached_file = None
+    cached_file = None
+    if use_cache:
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            fish_id = ""
+            if provider in ("fish-audio", "fish_audio", "fishaudio"):
+                fcfg = cfg.get("fish_audio", {}) or {}
+                fish_id = f"{fcfg.get('reference_id', '')}|{fcfg.get('model', '')}"
+            raw_key = f"{provider}|{cleaned.lower()}|{voice}|{pitch}|{rate}|{synth_preset}|{fish_id}"
+            cache_hash = hashlib.md5(raw_key.encode("utf-8")).hexdigest()
+            cached_file = os.path.join(cache_dir, f"{cache_hash}.mp3")
+            if os.path.exists(cached_file) and os.path.getsize(cached_file) > 1024:
+                # Verify ttl – discard stale files
+                mtime = os.path.getmtime(cached_file)
+                if time.time() - mtime < CACHE_TTL_SECONDS:
+                    shutil.copyfile(cached_file, out_path)
+                    print(json.dumps({"success": True, "path": out_path, "voice": voice, "cached": True, "provider": provider}))
+                    return
+                else:
+                    # Stale cache – remove it so a fresh request happens
+                    try:
+                        os.remove(cached_file)
+                    except Exception:
+                        pass
+        except Exception:
+            cached_file = None
     if provider == "elevenlabs":
         pitch_mult = parse_pitch_multiplier(pitch)
         success = synthesize_elevenlabs(cleaned, out_path, cfg.get("elevenlabs", {}), synth_preset, pitch)
@@ -884,6 +886,7 @@ def main():
     tts_parser.add_argument("--text", required=True, help="Text to speak")
     tts_parser.add_argument("--out", required=True, help="Output audio file path")
     tts_parser.add_argument("--lang", default=None, help="Explicit language override (e.g. es, en, ja)")
+    tts_parser.add_argument("--no-cache", action="store_true", help="Skip the disk cache, both the lookup and the write")
 
     # STT (one-shot)
     stt_parser = subparsers.add_parser("stt")
@@ -898,7 +901,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "tts":
-        asyncio.run(synthesize_speech(args.text, args.out, getattr(args, 'lang', None)))
+        asyncio.run(synthesize_speech(args.text, args.out, getattr(args, 'lang', None), not args.no_cache))
     elif args.command == "stt":
         transcribe_audio(args.file, getattr(args, 'lang', None))
     elif args.command == "prepare-whisper":

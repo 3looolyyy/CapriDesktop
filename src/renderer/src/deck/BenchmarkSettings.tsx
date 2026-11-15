@@ -87,7 +87,8 @@ export const BenchmarkSettings: React.FC = () => {
 
   const run = async (req: Parameters<typeof window.api.benchmark.run>[0]): Promise<BenchmarkResult> => {
     try {
-      return await window.api.benchmark.run(req)
+      const result = await window.api.benchmark.run(req)
+      return result.error === 'busy' ? { ...result, error: t('bm_busy') } : result
     } catch (err) {
       return { success: false, error: String((err as Error)?.message || err) }
     }

@@ -506,5 +506,6 @@ export const zh: Messages = {
   bm_visionHelp: '为更常使用她眼睛的用户提供的单独测试：截取屏幕并测量视觉模型描述它所需的时间。',
   bm_runVision: '运行视觉测试',
   bm_visionRow: '屏幕截图 + 视觉模型',
-  bm_visionNote: '第一次查看会加载模型，不计入。'
+  bm_visionNote: '第一次查看会加载模型，不计入。',
+  bm_busy: '上一个测试仍在结束中。请稍等片刻后再运行。'
 }

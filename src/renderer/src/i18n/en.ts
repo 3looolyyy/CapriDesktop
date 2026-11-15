@@ -504,7 +504,8 @@ export const en = {
   bm_visionHelp: 'A separate test for using her eyes more often: it takes a screenshot and times the vision model describing it.',
   bm_runVision: 'Run vision test',
   bm_visionRow: 'Screen capture + vision model',
-  bm_visionNote: 'The first look loads the model and is not counted.'
+  bm_visionNote: 'The first look loads the model and is not counted.',
+  bm_busy: 'The previous test is still finishing. Wait a moment and run it again.'
 }
 
 export type Messages = typeof en
