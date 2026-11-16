@@ -329,13 +329,31 @@ async function download(url: string, dest: string): Promise<void> {
   const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'CapriDesktop-Updater' } })
   if (!res.ok || !res.body) throw new Error(`la descarga respondió ${res.status}`)
   const out = fs.createWriteStream(dest)
+  // A write that fails (full disk, no permission) used to be an unhandled stream error: the update
+  // hung, or the error escaped. Now it ends the download with the reason
+  let writeError: Error | null = null
+  const failed = new Promise<never>((_, reject) =>
+    out.once('error', (err) => {
+      writeError = err
+      reject(err)
+    })
+  )
+  failed.catch(() => {})
   const reader = res.body.getReader()
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    if (!out.write(Buffer.from(value))) await new Promise<void>((r) => out.once('drain', () => r()))
+  try {
+    for (;;) {
+      if (writeError) throw writeError
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!out.write(Buffer.from(value))) await Promise.race([new Promise<void>((r) => out.once('drain', () => r())), failed])
+    }
+    await Promise.race([new Promise<void>((resolve, reject) => out.end((err?: Error | null) => (err ? reject(err) : resolve()))), failed])
+  } catch (err) {
+    out.destroy()
+    await reader.cancel().catch(() => {})
+    fs.rmSync(dest, { force: true })
+    throw err
   }
-  await new Promise<void>((resolve, reject) => out.end((err?: Error | null) => (err ? reject(err) : resolve())))
 }
 
 export const updateService = new UpdateService()
