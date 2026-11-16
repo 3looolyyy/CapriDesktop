@@ -16,4 +16,4 @@ export interface BugReportResult {
   truncated: boolean
 }
 
-export const ISSUES_URL = 'https://github.com/nunezValen/CapriDesktop/issues/new'
+export { ISSUES_URL } from './links'

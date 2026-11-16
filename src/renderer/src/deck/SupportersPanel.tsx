@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Heart, Loader2, Volume2 } from 'lucide-react'
+import { Coffee, ExternalLink, Heart, Loader2, Volume2 } from 'lucide-react'
 import supportersData from '../data/supporters.json'
-import { useUiLang } from '../utils/useUiLang'
+import { useT, useUiLang } from '../utils/useUiLang'
+import { KOFI_URL } from '../../../shared/links'
 
 /** Someone who donated or bought the game: their name, what they wrote, and the update they came in */
 interface Supporter {
@@ -31,6 +32,7 @@ const speakable = (text: string): string =>
  */
 export const SupportersPanel: React.FC = () => {
   const isEs = useUiLang() === 'es'
+  const t = useT()
   const [speaking, setSpeaking] = useState<string | null>(null)
   const [thinking, setThinking] = useState<string | null>(null)
   // What she answered each one, shown under the name too (in case the voice is off)
@@ -91,6 +93,17 @@ export const SupportersPanel: React.FC = () => {
             ? 'Las personas que donaron o compraron Capri, actualización por actualización. Hacé click en un nombre y Capri te cuenta qué dijo.'
             : 'The people who donated to or bought Capri, update by update. Click a name and Capri tells you what they said.'}
         </p>
+
+        {/* How to get on the wall */}
+        <button
+          type="button"
+          onClick={() => void window.api.game.openExternal(KOFI_URL)}
+          className="cp-cut w-full flex items-center gap-3 px-4 py-3 text-left border bg-[#3c1c1d] border-[#612f30] hover:bg-[#4a2223] text-white transition-colors cursor-pointer"
+        >
+          <Coffee size={18} className="shrink-0 text-cp-400" />
+          <span className="flex-1 text-[13px]">{t('support_wallCta')}</span>
+          <ExternalLink size={13} className="shrink-0 text-[var(--cp-muted)]" />
+        </button>
 
         {supporters.length === 0 ? (
           <p className="text-[13px] text-[var(--cp-muted)] py-6 text-center">{isEs ? 'Todavía no hay nadie en la lista.' : 'Nobody on the list yet.'}</p>
