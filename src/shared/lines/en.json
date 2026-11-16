@@ -864,5 +864,8 @@
  "VALORANT isn't open yet, {name}. Open it and ask me again.",
  "VALORANT didn't let me start the search, {name}. Try it from the menu.",
  "Done, {name}: I stopped the VALORANT match search.",
- "You weren't searching for a match in VALORANT, {name}."
+ "You weren't searching for a match in VALORANT, {name}.",
+ "[worried] I can't reach Ollama, choomba, so my brain ({0}) isn't loaded. Open Ollama, or pick another brain in AI & models.",
+ "[worried] Ollama has no models installed, choomba, so I have no brain to think with. Download one in AI & models.",
+ "[worried] My brain didn't load right, choomba: {0} failed ({1}). Try another model in AI & models; Settings > Logs has the details."
 ]
