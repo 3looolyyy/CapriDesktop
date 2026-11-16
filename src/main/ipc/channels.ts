@@ -173,6 +173,12 @@ export const IPC_CHANNELS = {
   GAMING_OPACITY_CHANGED: 'companion:gamingOpacityChanged',
   VOICE_SYNTHESIZE: 'voice:synthesize',
   BENCHMARK_RUN: 'benchmark:run',
+  LOGS_GET: 'logs:get',
+  LOGS_SUBSCRIBE: 'logs:subscribe',
+  LOGS_UNSUBSCRIBE: 'logs:unsubscribe',
+  /** Main -> renderer: new log lines for the Logs panel, in batches */
+  LOGS_LINES: 'logs:lines',
+  BUG_REPORT_COPY: 'logs:copyBugReport',
   VOICE_TOGGLE_RECORDING: 'voice:toggle-recording',
   /** Renderer -> main: push-to-talk recording started/stopped (enables the global Esc to cancel) */
   VOICE_RECORDING_STATE: 'voice:recording-state',
