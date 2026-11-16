@@ -366,6 +366,8 @@ export class CapriLocalAgent extends EventEmitter {
     const fixedCommand = commandInEnglish(prompt)
     // Her own short commands in any language ("quedate quieta") say which language they are in
     const spokenCommandLang = fixedCommandLanguage(prompt)
+    // What the model would get, kept for a request the command shortcuts took and couldn't do
+    this.turn = { spokenPrompt, endpoint: config.endpoint || 'http://localhost:11434/v1', config, handedToModel: false }
     // "How do I make you stay still?", "what can you do?": answered from her catalog, in any language
     const helpRequest = fixedCommand ? null : parseHelpRequest(prompt)
     const detectedLang = heardLang || fixedCommand?.lang || spokenCommandLang || CapriLocalAgent.detectLanguage(prompt.trim())
@@ -2755,6 +2757,20 @@ LANGUAGE RULE: ${langDirective}`
       return
     }
 
+    // A shortcut took it ("play", "open" and "pon" are in plenty of ordinary sentences) and no command
+    // matched: the model answers it, instead of the same small talk every time
+    const turn = this.turn
+    if (!brainProblem && turn && !turn.handedToModel && !this.isCancelled) {
+      turn.handedToModel = true
+      const model = await this.resolveAvailableModel(turn.endpoint, turn.config.model || 'capri')
+      if (model) {
+        console.log('[Capri Agent] No command matched, the model answers instead')
+        await this.runWithLlm(turn.spokenPrompt, projectPath, turn.endpoint, { ...turn.config, model })
+        return
+      }
+      brainProblem = this.lastModelProblem ?? { kind: 'unreachable', model: turn.config.model || 'capri' }
+    }
+
     // Her brain didn't load: she says what went wrong, so it doesn't look like she's answering (issue #37)
     if (brainProblem) {
       this.emitAssistant(this.brainProblemLine(brainProblem, isSpanish))
@@ -4927,6 +4943,9 @@ DIRECTIVES FOR FORMATTING AND REASONING:
 
   /** Why the last model lookup found nothing to answer with */
   private lastModelProblem: BrainProblem | null = null
+
+  /** The request being answered, as the model would get it */
+  private turn: { spokenPrompt: string; endpoint: string; config: AgentConfig; handedToModel: boolean } | null = null
 
   /** What she says when her brain didn't load, instead of small talk that looks like an answer */
   private brainProblemLine(problem: BrainProblem, isSpanish: boolean): string {

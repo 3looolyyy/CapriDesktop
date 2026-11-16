@@ -1,0 +1,2 @@
+[excited] New update, {name}!
+[happy] Now you can ask me what I can do, or how to do anything, like "how do I make you stay still?", and I'll explain it in your language. If something breaks, Settings has a button that copies a bug report for the developer, and a tab to watch my logs live. [curious] When my brain doesn't load I tell you why instead of repeating the same line, and I don't go quiet while watching your screen anymore. [playful] There's also a Benchmark to see which model is fastest on your PC, and tabs for the people who help me: Contributors and Support.
