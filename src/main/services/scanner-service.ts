@@ -1742,7 +1742,7 @@ Be specific and direct.`
         signal: AbortSignal.timeout(timeoutMs)
       })
       if (!resp.ok) {
-        console.warn('[ScannerService] Screen reaction failed:', resp.status, await resp.text().catch(() => ''))
+        this.noteReactionFailure(localModel || getLlmSettings().model || 'cloud-vision', `HTTP ${resp.status}: ${(await resp.text().catch(() => '')).slice(0, 200)}`)
         return null
       }
       const data = (await resp.json()) as any
@@ -1758,7 +1758,7 @@ Be specific and direct.`
       }
       return raw ? this.parseWatchReaction(raw, isEs) : null
     } catch (err) {
-      console.warn('[ScannerService] Screen reaction error:', err)
+      this.noteReactionFailure(localModel || getLlmSettings().model || 'cloud-vision', String((err as Error)?.message || err))
       return null
     }
   }
@@ -1881,7 +1881,7 @@ REACTION RULES:
     textModel: string,
     lang = isEs ? 'es' : 'en',
     timeoutMs = 25000
-  ): Promise<{ summary: string; reaction: string }> {
+  ): Promise<{ summary: string; reaction: string } | null> {
     const systemInstruction = this.watchReactionPrompt(visualDescription, isEs, lang)
     const userPrompt = this.watchReactionAsk(isEs)
 
@@ -1906,19 +1906,39 @@ REACTION RULES:
       })
 
       if (!textResp.ok) {
-        throw new Error(`Text model error: ${textResp.statusText}`)
+        const reason = await ollamaErrorText(textResp)
+        this.noteReactionFailure(textModel, `HTTP ${textResp.status}${reason ? `: ${reason}` : ''}`)
+        return null
       }
 
       const textData = (await textResp.json()) as any
       const rawContent = textData?.message?.content || ''
       return this.parseWatchReaction(rawContent, isEs)
     } catch (err) {
-      console.warn('[ScannerService] generateWatchReaction text model warning:', err)
-      return {
-        summary: isEs ? 'Actividad en pantalla' : 'Screen activity',
-        reaction: isEs ? '¡Mirá lo que está pasando en pantalla, choomba!' : "Whoa, look at what's happening on screen, choomba!"
-      }
+      // A stock line here was said once and then filtered as a repeat: she went silent with no clue why
+      this.noteReactionFailure(textModel, String((err as Error)?.message || err))
+      return null
     }
+  }
+
+  private reactionFailures = 0
+  private reactionFailureToldAt = 0
+
+  /**
+   * Her screen reactions keep failing: logged every time, and said once (then every 10 minutes at
+   * most) so the user knows why she is quiet instead of watching in silence
+   */
+  private noteReactionFailure(model: string, detail: string): void {
+    this.reactionFailures++
+    console.warn(`[ScannerService] Screen reaction with ${model || 'no model'} failed (${this.reactionFailures} in a row): ${detail}`)
+    if (this.reactionFailures < 3 || Date.now() - this.reactionFailureToldAt < 10 * 60_000 || !this.isWatchingScreen) return
+    this.reactionFailureToldAt = Date.now()
+    const isEs = consciousnessService.getPreferredLanguage() === 'es'
+    const short = detail.replace(/\s+/g, ' ').slice(0, 120)
+    const line = isEs
+      ? `[worried] Estoy mirando tu pantalla pero no puedo comentarla, choomba: el modelo ${model || 'capri'} falla (${short}). Revisalo en IA y modelos; en Configuración > Logs está el detalle.`
+      : `[worried] I'm watching your screen but I can't comment on it, choomba: the model ${model || 'capri'} keeps failing (${short}). Check it in AI & models; Settings > Logs has the details.`
+    agentManager.setCompanionSpeech(line, Math.max(6000, line.length * 60), true, undefined, true)
   }
 
   private parseWatchReaction(raw: string, isEs: boolean): { summary: string; reaction: string } {
@@ -1948,12 +1968,14 @@ REACTION RULES:
       .replace(/[\u{1F300}-\u{1F9FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
       .trim()
 
-    // If clean has no real letters, or is shorter than 4 characters, use a natural fallback
+    // Nothing usable came back: nothing said this time (a stock line was said once, then always
+    // filtered as a repeat, and she looked frozen)
     const hasLetters = /\p{L}{3,}/u.test(clean)
     if (!hasLetters || clean.length < 4 || clean.startsWith('{')) {
-      clean = isEs
-        ? '¡Mirá lo que está pasando en pantalla, choomba!'
-        : "Whoa, look at what's happening on screen, choomba!"
+      console.log('[ScannerService] The model answered nothing usable for the screen:', JSON.stringify(raw.slice(0, 120)))
+      clean = ''
+    } else {
+      this.reactionFailures = 0
     }
 
     const summary = isEs ? 'Actividad en pantalla' : 'Screen activity'

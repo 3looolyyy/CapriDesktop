@@ -958,5 +958,6 @@
  "Done choomba! Stopped screen watch. Back to regular desktop.",
  "Alright, I'll pick one then!",
  "Listening. Say \"Hey Capri\" followed by your request.",
- "Voice recognition unavailable: {0}"
+ "Voice recognition unavailable: {0}",
+ "[worried] I'm watching your screen but I can't comment on it, choomba: the model {0} keeps failing ({1}). Check it in AI & models; Settings > Logs has the details."
 ]
