@@ -505,7 +505,27 @@ export const en = {
   bm_runVision: 'Run vision test',
   bm_visionRow: 'Screen capture + vision model',
   bm_visionNote: 'The first look loads the model and is not counted.',
-  bm_busy: 'The previous test is still finishing. Wait a moment and run it again.'
+  bm_busy: 'The previous test is still finishing. Wait a moment and run it again.',
+  logs_tab: 'Logs',
+  logs_title: 'Logs',
+  logs_intro: 'Everything Capri does, live. If something goes wrong, copy the bug report and send it to the developer or paste it in a GitHub issue: it has your system info and the recent logs, with API keys and your user folder hidden.',
+  logs_bugReport: 'Copy bug report',
+  logs_bugHelp: 'Copies your system info and the recent logs, ready to send',
+  logs_copied: 'Copied, with the last {lines} log lines. Paste it in a GitHub issue or send it to the developer.',
+  logs_copiedTrunc: 'Copied, with the last {lines} log lines (older ones left out to fit). Paste it in a GitHub issue or send it to the developer.',
+  logs_copyFailed: 'The bug report could not be copied.',
+  logs_openIssue: 'Open a GitHub issue',
+  logs_pause: 'Pause',
+  logs_resume: 'Resume',
+  logs_clear: 'Clear view',
+  logs_problemsOnly: 'Warnings and errors only',
+  logs_empty: 'Nothing logged yet.',
+  collab_tab: 'Contributors',
+  collab_title: 'Contributors',
+  collab_intro: 'The people who wrote part of Capri on GitHub. Click a name to open their profile.',
+  collab_empty: 'Nobody on the list yet.',
+  collab_open: 'Open their GitHub profile',
+  collab_join: 'Want to contribute? Capri on GitHub'
 }
 
 export type Messages = typeof en
