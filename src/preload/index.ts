@@ -10,6 +10,7 @@ import type { AiAppInfo } from '../main/services/ai-apps'
 import type { CyberpunkFolderInfo, CyberpunkFoldersState } from '../main/services/game/adapters/cyberpunk/cyberpunk-folders'
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import type { HotkeyAction, HotkeyProblem, Hotkeys } from '../shared/hotkeys'
+import type { BenchmarkRequest, BenchmarkResult } from '../shared/benchmark'
 import {
   IPC_CHANNELS,
   CompanionEmotionState,
@@ -491,6 +492,10 @@ const api = {
       ipcRenderer.on(IPC_CHANNELS.VOICE_CANCEL_RECORDING, sub)
       return () => ipcRenderer.removeListener(IPC_CHANNELS.VOICE_CANCEL_RECORDING, sub)
     }
+  },
+
+  benchmark: {
+    run: (req: BenchmarkRequest): Promise<BenchmarkResult> => ipcRenderer.invoke(IPC_CHANNELS.BENCHMARK_RUN, req)
   },
 
   // Media Controls (Spotify)

@@ -50,6 +50,7 @@ export interface SynthesizeResult {
   success: boolean
   audioDataUrl?: string
   error?: string
+  fallback?: boolean
 }
 
 export class VoiceService {
@@ -365,7 +366,7 @@ export class VoiceService {
   /**
    * Synthesizes text into Capri's voice with exact acoustic profile and zero latency
    */
-  public async synthesize(text: string, langOverride?: string, opts: { silent?: boolean } = {}): Promise<SynthesizeResult> {
+  public async synthesize(text: string, langOverride?: string, opts: { silent?: boolean; fresh?: boolean } = {}): Promise<SynthesizeResult> {
     // Strip all emoji characters and pictorial symbols so TTS does not read them out loud
     const cleanText = stripLookTags(text)
       .replace(/[\u{1F300}-\u{1F9FF}]|[\u{1FA00}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/gu, '')
@@ -455,7 +456,7 @@ export class VoiceService {
     }
 
     const cacheKey = `${targetLang || 'auto'}:${spokenText}`
-    const cached = this.audioCache.get(cacheKey)
+    const cached = opts.fresh ? undefined : this.audioCache.get(cacheKey)
     if (cached) {
       return { success: true, audioDataUrl: cached }
     }
@@ -474,6 +475,7 @@ export class VoiceService {
     if (targetLang) {
       ttsArgs.push('--lang', targetLang)
     }
+    if (opts.fresh) ttsArgs.push('--no-cache')
 
     const ttsStartedAt = Date.now()
     try {
@@ -537,7 +539,7 @@ export class VoiceService {
 
             if (isFallback) {
               console.warn(`[VoiceService] Provider failed, Edge-TTS fallback used (not cached): "${cleanText}"`)
-            } else {
+            } else if (!opts.fresh) {
               // Store in fast memory cache (limit to 400 phrases)
               if (this.audioCache.size >= 400) {
                 const firstKey = this.audioCache.keys().next().value
@@ -546,7 +548,7 @@ export class VoiceService {
               this.audioCache.set(cacheKey, audioDataUrl)
             }
 
-            resolve({ success: true, audioDataUrl })
+            resolve({ success: true, audioDataUrl, ...(isFallback ? { fallback: true } : {}) })
           } catch (readErr: any) {
             resolve({ success: false, error: readErr?.message || 'Failed to read synthesized audio' })
           }

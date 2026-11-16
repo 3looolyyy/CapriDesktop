@@ -18,6 +18,8 @@ import { agentManager } from '../agents/agent-manager'
 import { terminalManager } from '../terminal/terminal-manager'
 import { roamingManager } from '../roaming/roaming-manager'
 import { voiceService } from '../services/voice-service'
+import { benchmarkService } from '../services/benchmark-service'
+import type { BenchmarkRequest } from '../../shared/benchmark'
 import { checkAddressed } from '../services/wake-word'
 import { consciousnessService } from '../services/consciousness-service'
 import { localizeLine } from '../../shared/lines'
@@ -724,6 +726,10 @@ export function registerIpcHandlers(): void {
     } catch (err: any) {
       return { success: false, error: err?.message || String(err) }
     }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BENCHMARK_RUN, async (_event, req: BenchmarkRequest) => {
+    return benchmarkService.run(req)
   })
 
   ipcMain.handle(IPC_CHANNELS.VOICE_GET_CONFIG, async () => {

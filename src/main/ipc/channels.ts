@@ -172,6 +172,7 @@ export const IPC_CHANNELS = {
   GAMING_OPACITY_SET: 'companion:setGamingOpacity',
   GAMING_OPACITY_CHANGED: 'companion:gamingOpacityChanged',
   VOICE_SYNTHESIZE: 'voice:synthesize',
+  BENCHMARK_RUN: 'benchmark:run',
   VOICE_TOGGLE_RECORDING: 'voice:toggle-recording',
   /** Renderer -> main: push-to-talk recording started/stopped (enables the global Esc to cancel) */
   VOICE_RECORDING_STATE: 'voice:recording-state',
