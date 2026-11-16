@@ -999,7 +999,11 @@ If there is no text or title visible, reply "NONE".`
       return { handled: true }
     }
 
-    const isMusicRequest = /\b(?:music|musica|song|cancion)\b/i.test(clean) && !/\bvideos?\b/i.test(clean)
+    // Music goes to the music handler, in any of her languages ("clean" breaks up Hangul, so those words are read from the raw text)
+    const raw = rawText.normalize('NFC').toLowerCase()
+    const isMusicRequest =
+      (/\b(?:music|musica|musique|musik|songs?|cancion(?:es)?|cancao|chansons?|canzon[ei])\b/i.test(clean) || /音楽|音乐|歌|음악|노래|музык|песн/.test(raw)) &&
+      !(/\bvideos?\b/i.test(clean) || /動画|视频|視頻|ビデオ|비디오|영상|видео/.test(raw))
 
     // 1. YouTube Autonomous Video Picker (Mode B) - e.g. "hey pick a video from youtube and lets watch it"
     const isEnglishAutoPick =
