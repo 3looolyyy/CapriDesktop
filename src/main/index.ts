@@ -1,4 +1,6 @@
 import './services/log-timestamps'
+// Second, so it keeps each line without the terminal's timestamp (it stamps its own)
+import './services/log-capture'
 import { startMacDesktopMonitoring } from './services/mac-desktop'
 import './services/mac-bootstrap'
 import { startScreenComments } from './services/screen-comment-service'
@@ -24,6 +26,11 @@ import { isElevated, relaunchElevated } from './services/admin-mode'
 import { warmBrainApp } from './services/llm-gateway'
 import { closeAiAppSessions } from './services/ai-apps'
 import { closeScreenWorker } from './services/screen-worker'
+// Last, so the modules above load in the order they always did
+import { captureWindowLogs, registerBugReportHandlers } from './services/bug-report'
+
+// What her windows log goes to the bug report too
+captureWindowLogs()
 
 // Log unhandled exceptions to crash.log
 process.on('uncaughtException', (err) => {
@@ -110,6 +117,7 @@ if (!gotTheLock) {
 
     // Register all IPC handlers
     registerIpcHandlers()
+    registerBugReportHandlers()
 
     // An AI app as her brain opens now and stays open (starting it per question took 20-35s)
     warmBrainApp()

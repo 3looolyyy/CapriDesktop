@@ -7,8 +7,9 @@ const fs = require('fs')
 const path = require('path')
 
 const roots = ['src/main', 'src/renderer/src/companion', 'src/renderer/src/deck/AgentChat.tsx']
-// The donations script is for a video and stays as written
-const skipFile = /donation-script|look-tags|\/shared\/lines\//
+// The donations script is for a video and stays as written. The command lists are what the user
+// says, not what she says, and the help answers are already written in every language
+const skipFile = /donation-script|look-tags|\/shared\/lines\/|spoken-commands|command-translations|help-requests/
 const LANG = /\b(isEs|isSpanish|es)\b|===? *'es'|!== *'es'/
 const SPEAK = /^(setCompanionSpeech|emitAssistant|setSpeech|speak|sayAfterIntro|triggerCapriReaction|say|speakWithCapriVoice)$/
 
@@ -26,7 +27,15 @@ const NOT_A_LINE = [
   /^(Scanned screen content|Visual content detected|Updated content inside frame)$/,
   /^\/\/ Created by Capri/,
   /^Could not capture region/,
-  /^\[(CANCEL|SEND)\]$/
+  /^\[(CANCEL|SEND)\]$/,
+  // Instructions for the model
+  /^Do NOT answer in/,
+  /^casual \{0\}, keeping Night City slang/,
+  /^The screenshot of \{name\}'s screen is attached/,
+  /^Answer in 2 lines\. SEE:/,
+  /^Tell \{name\} in 1 quick spoken sentence/,
+  /^Lines you ALREADY said/,
+  /^Screen activity$/
 ]
 const SPANISH = /[áéíóúñ¿¡]|\b(Tus macros|Modo Scanner|Auto-aceptar|Fallo al|Uff, hubo|No pude|No puedo|Audio silenciado|Listo, dejo)\b/
 

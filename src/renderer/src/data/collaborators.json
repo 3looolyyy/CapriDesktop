@@ -1,0 +1,34 @@
+[
+  {
+    "login": "kzzzakz",
+    "name": "Kyuni",
+    "work": [
+      "Capri in the notification tray",
+      "Remembers the chosen Ollama model",
+      "YouTube Music as a music platform",
+      "Keeps Capri in the chosen languages",
+      "VALORANT live game reactions",
+      "Watch party, AI apps and local vision fixes"
+    ]
+  },
+  {
+    "login": "3looolyyy",
+    "name": "Archo",
+    "work": ["Apple Silicon macOS support"]
+  },
+  {
+    "login": "In-My-Way",
+    "name": "Personified",
+    "work": ["System prompt editor", "Benchmarks"]
+  },
+  {
+    "login": "haibanelain",
+    "name": "Haibane Lain",
+    "work": ["Ignores N/A window titles on English Windows"]
+  },
+  {
+    "login": "MycroftCanner2",
+    "name": "Mycroft",
+    "work": ["Grok sign-in and portable build proposal"]
+  }
+]
