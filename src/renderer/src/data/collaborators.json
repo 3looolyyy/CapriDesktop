@@ -25,5 +25,10 @@
     "login": "haibanelain",
     "name": "Haibane Lain",
     "work": ["Ignores N/A window titles on English Windows"]
+  },
+  {
+    "login": "MycroftCanner2",
+    "name": "Mycroft",
+    "work": ["Grok sign-in and portable build proposal"]
   }
 ]
