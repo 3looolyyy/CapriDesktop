@@ -525,7 +525,25 @@ export const en = {
   collab_intro: 'The people who wrote part of Capri on GitHub. Click a name to open their profile.',
   collab_empty: 'Nobody on the list yet.',
   collab_open: 'Open their GitHub profile',
-  collab_join: 'Want to contribute? Capri on GitHub'
+  collab_join: 'Want to contribute? Capri on GitHub',
+  support_tab: 'Support',
+  support_title: 'Support Capri',
+  support_intro: 'Capri is made by one developer. If she makes your days better, you can support her on Ko-fi and follow her to see what comes next.',
+  support_kofi: 'Support Capri on Ko-fi',
+  support_kofiHelp: 'Donations keep her growing, and supporters appear on the Supporters wall.',
+  support_x: 'Follow on X',
+  support_xHelp: '@capridesktop: news, previews and updates.',
+  support_github: 'Capri on GitHub',
+  support_githubHelp: 'The code, releases and issues. Contributions are welcome.',
+  support_wallCta: 'Want to appear here too? Show your support on Ko-fi.',
+  help_tab: 'Help',
+  help_title: 'What Capri can do',
+  help_intro: 'Everything Capri understands, with what to say and where to find it. You can also ask her: "what can you do?" or "how do I make you stay still?".',
+  help_search: 'Search...',
+  help_noResults: 'Nothing matches that.',
+  help_notHere: 'Not on this system',
+  help_try: 'Try it',
+  help_sent: 'Sent!'
 }
 
 export type Messages = typeof en

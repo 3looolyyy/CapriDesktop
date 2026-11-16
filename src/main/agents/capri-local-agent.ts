@@ -54,6 +54,7 @@ import { parseValorantCommand } from '../services/valorant/command-parser'
 import { valorantAgentSelect, valorantPickMessage } from '../services/valorant/agent-select-service'
 import { leaveValorantQueue, startValorantQueue, valorantIsTheOpenGame, valorantQueueMessage } from '../services/valorant/matchmaking-service'
 import { originalWords, parseMemoryCommand, type MemoryCommand } from './memory-commands'
+import { capabilityManual, helpAnswer, parseHelpRequest } from './help-requests'
 import { memoryService } from '../services/memory-service'
 import { listKnownApps } from '../services/known-apps'
 import { appRequestInEnglish, fixedCommandLanguage, isHoldStillRequest, isKnownAppsRequest, isMoveAgainRequest, isStopWatchScreenRequest, isUpdateInOtherLanguage, isVersionRequest, isWatchScreenRequest, isWhatsNewInOtherLanguage } from './spoken-commands'
@@ -365,6 +366,8 @@ export class CapriLocalAgent extends EventEmitter {
     const fixedCommand = commandInEnglish(prompt)
     // Her own short commands in any language ("quedate quieta") say which language they are in
     const spokenCommandLang = fixedCommandLanguage(prompt)
+    // "How do I make you stay still?", "what can you do?": answered from her catalog, in any language
+    const helpRequest = fixedCommand ? null : parseHelpRequest(prompt)
     const detectedLang = heardLang || fixedCommand?.lang || spokenCommandLang || CapriLocalAgent.detectLanguage(prompt.trim())
     if (detectedLang !== 'unknown') consciousnessService.setSpokenLanguage(detectedLang)
     const conversationLang = consciousnessService.getSpokenLanguage()
@@ -374,7 +377,7 @@ export class CapriLocalAgent extends EventEmitter {
     if (fixedCommand) {
       console.log(`[Capri Agent] Command in ${fixedCommand.lang}, read as: "${fixedCommand.text}"`)
       prompt = fixedCommand.text
-    } else if (!spokenCommandLang && conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
+    } else if (!helpRequest && !spokenCommandLang && conversationLang && !['en', 'es'].includes(conversationLang) && prompt.length < 300) {
       const english = await voiceService.translateCommand(prompt.trim())
       // Sometimes the model answers instead of translating: an answer is not the command
       if (english && !/[\r\n]/.test(english) && english.length <= prompt.length * 2 + 20) {
@@ -393,6 +396,14 @@ export class CapriLocalAgent extends EventEmitter {
 
     this.replyLang = activeLang
     const isSpanish = activeLang === 'es'
+
+    // Before any command runs: "how do I turn on gaming mode?" must explain it, not turn it on
+    if (helpRequest) {
+      console.log(`[Capri Agent] Help question: ${helpRequest.kind === 'how' ? helpRequest.capability.id : 'what can you do'}`)
+      this.emitAssistant(helpAnswer(helpRequest, activeLang, process.platform, consciousnessService.getHotkeys()))
+      this.finishSession()
+      return
+    }
 
     const desktopCommand = isMac ? parseDesktopCommand(trimmed) : null
     if (desktopCommand) {
@@ -1811,6 +1822,9 @@ LANGUAGE RULE: ${langDirective}`
 
     const ownLines = this.takeOwnLinesNote()
     if (ownLines) this.conversationHistory.push({ role: 'system', content: ownLines })
+    // A question about her own features she didn't answer from the catalog: the matching entries go along
+    const manual = capabilityManual(spokenText, process.platform, consciousnessService.getHotkeys())
+    if (manual) this.conversationHistory.push({ role: 'system', content: manual })
 
     this.conversationHistory.push({
       role: 'user',

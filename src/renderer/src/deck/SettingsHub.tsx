@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { AppWindow, Apple, Cpu, Gauge, Heart, Languages, ScrollText, Sliders, Sparkles, Users, X } from 'lucide-react'
+import { AppWindow, Apple, CircleHelp, Cpu, Gauge, HandHeart, Heart, Languages, ScrollText, Sliders, Sparkles, Users, X } from 'lucide-react'
 import { AgentSettingsModal } from './AgentSettingsModal'
 import { VoiceSettingsModal } from '../companion/VoiceSettingsModal'
 import { LanguageSettingsModal } from './LanguageSettingsModal'
@@ -8,11 +8,13 @@ import { SupportersPanel } from './SupportersPanel'
 import { BenchmarkSettings } from './BenchmarkSettings'
 import { BugReportButton, LogsPanel } from './LogsPanel'
 import { CollaboratorsPanel } from './CollaboratorsPanel'
+import { SupportPanel } from './SupportPanel'
+import { HelpPanel } from './HelpPanel'
 import { MacSettings } from '../components/MacSettings'
 import { BehaviorSettings } from '../companion/BehaviorSettings'
 import { useT, useUiLang } from '../utils/useUiLang'
 
-export type SettingsTab = 'ai' | 'capri' | 'voice' | 'language' | 'apps' | 'benchmark' | 'logs' | 'supporters' | 'collaborators' | 'mac'
+export type SettingsTab = 'ai' | 'capri' | 'voice' | 'language' | 'apps' | 'benchmark' | 'logs' | 'help' | 'support' | 'supporters' | 'collaborators' | 'mac'
 
 interface SettingsHubProps {
   isOpen: boolean
@@ -46,6 +48,8 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({ isOpen, tab, onTabChan
     { id: 'benchmark', label: t('bm_tab'), icon: <Gauge size={14} /> },
     { id: 'logs', label: t('logs_tab'), icon: <ScrollText size={14} /> },
     ...(isMac ? [{ id: 'mac' as const, label: 'Mac & Spotify', icon: <Apple size={14} /> }] : []),
+    { id: 'help', label: t('help_tab'), icon: <CircleHelp size={14} /> },
+    { id: 'support', label: t('support_tab'), icon: <HandHeart size={14} /> },
     { id: 'supporters', label: 'Supporters', icon: <Heart size={14} /> },
     { id: 'collaborators', label: t('collab_tab'), icon: <Users size={14} /> }
   ]
@@ -121,6 +125,8 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({ isOpen, tab, onTabChan
               </div>
             )}
             {tab === 'logs' && <LogsPanel />}
+            {tab === 'help' && <HelpPanel isMac={isMac} />}
+            {tab === 'support' && <SupportPanel />}
             {tab === 'supporters' && <SupportersPanel />}
             {tab === 'collaborators' && <CollaboratorsPanel />}
           </div>
