@@ -29,8 +29,8 @@ export const HelpPanel: React.FC<{ isMac: boolean }> = ({ isMac }) => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return CAPABILITIES.filter((cap) => !q || `${cap.text[lang][0]} ${capabilityHowTo(cap, lang, hotkeys)}`.toLowerCase().includes(q))
-  }, [query, lang, hotkeys])
+    return CAPABILITIES.filter((cap) => !q || `${cap.text[lang][0]} ${capabilityHowTo(cap, lang, hotkeys, platform)}`.toLowerCase().includes(q))
+  }, [query, lang, hotkeys, platform])
 
   const tryIt = (id: string, phrase: string): void => {
     setTried(id)
@@ -87,7 +87,7 @@ export const HelpPanel: React.FC<{ isMac: boolean }> = ({ isMac }) => {
                         )
                       )}
                     </div>
-                    <p className="mt-1 text-[13px] text-stone-400 leading-snug">{capabilityHowTo(cap, lang, hotkeys)}</p>
+                    <p className="mt-1 text-[13px] text-stone-400 leading-snug">{capabilityHowTo(cap, lang, hotkeys, platform)}</p>
                   </div>
                 )
               })}

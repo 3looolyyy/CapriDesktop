@@ -27,8 +27,13 @@ export interface Capability {
   check?: CapabilityCheck
   /** Example phrases per language; the first one is the one she quotes */
   say: Partial<Record<HelpLang, string[]>>
-  /** Words that point to this capability in a help question, any language, without accents */
+  /** Words that only mean this feature of hers: enough on their own in a help question (no accents) */
   keywords: string[]
+  /**
+   * Words that also mean other things ("app", "version", "music"): they count only when the question
+   * is about her ("how do I hide you?"), so "how do I update node?" isn't taken for a help question
+   */
+  generic?: string[]
   /** [title, how to use it] per language */
   text: Record<HelpLang, [string, string]>
 }
@@ -55,7 +60,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['stay still'], es: ['quedate quieta'], pt: ['fica quieta'], fr: ['ne bouge pas'], de: ['bleib stehen'], it: ['stai ferma'],
       ru: ['не двигайся'], ja: ['動かないで'], ko: ['움직이지 마'], zh: ['别动']
     },
-    keywords: ['stay still', 'stand still', 'hold still', 'keep still', 'stop moving', 'stop walking', 'walking around', 'moving around', 'wander', 'roam', 'quieta', 'quieto', 'muevas', 'moverte', 'moviendo', 'dejes de caminar', 'camines', 'caminando', 'fique parada', 'fica parada', 'ficar parada', 'ficar quieta', 'se mexer', 'parar de andar', 'immobile', 'bouge', 'bouger', 'stillhalten', 'stillzuhalten', 'still zu halten', 'stehen bleib', 'herumlaufen', 'beweg', 'stia ferma', 'stare ferma', 'muoverti', 'не двигалась', 'стояла', 'не ходила', 'двигаться', '動かない', 'じっと', '歩き回', '움직이지', '가만히', '돌아다니', '别动', '不要动', '待着', '走来走去', '乱动'],
+    keywords: ['stay still', 'stand still', 'hold still', 'keep still', 'stop walking around', 'walking around', 'wander', 'roam', 'quedes quieta', 'quieta', 'dejes de caminar', 'fique parada', 'fica parada', 'ficar parada', 'ficar quieta', 'stillhalten', 'stillzuhalten', 'still zu halten', 'stare ferma', 'stia ferma', 'не двигалась', 'じっと', '歩き回', '가만히', '돌아다니', '别动', '不要动', '走来走去', '乱动'],
+    generic: ['stop moving', 'stop walking', 'moving around', 'quieto', 'muevas', 'moverte', 'moviendo', 'camines', 'caminando', 'se mexer', 'parar de andar', 'immobile', 'bouge', 'bouger', 'stehen bleib', 'herumlaufen', 'beweg', 'muoverti', 'стояла', 'не ходила', 'двигаться', '動かない', '움직이지', '待着'],
     text: {
       en: ['Stay still or roam', 'Tell me {say} and I stop wandering and stay right there. When you want me walking around again, say "you can move".'],
       es: ['Quedarme quieta o pasear', 'Decime {say} y dejo de caminar, me quedo ahí. Cuando quieras que vuelva a pasear, decime "ya podés moverte".'],
@@ -73,7 +79,8 @@ export const CAPABILITIES: Capability[] = [
     id: 'size-monitor',
     category: 'move',
     say: {},
-    keywords: ['your size', 'make you bigger', 'make you smaller', 'resize you', 'which monitor', 'other monitor', 'tu tamano', 'mas grande', 'mas chica', 'mas pequena', 'agrandarte', 'achicarte', 'otro monitor', 'que monitor', 'seu tamanho', 'maior', 'menor', 'outro monitor', 'ta taille', 'plus grande', 'plus petite', 'autre ecran', 'deine grosse', 'grosser', 'kleiner', 'anderen monitor', 'tua dimensione', 'piu grande', 'piu piccola', 'altro monitor', 'твой размер', 'больше', 'меньше', 'другой монитор', 'サイズ', '大きく', '小さく', 'モニター', '크기', '크게', '작게', '모니터', '大小', '变大', '变小', '显示器'],
+    keywords: ['your size', 'make you bigger', 'make you smaller', 'resize you', 'tu tamano', 'agrandarte', 'achicarte', 'seu tamanho', 'ta taille', 'deine grosse', 'tua dimensione', 'твой размер'],
+    generic: ['which monitor', 'other monitor', 'mas grande', 'mas chica', 'mas pequena', 'otro monitor', 'que monitor', 'maior', 'menor', 'outro monitor', 'plus grande', 'plus petite', 'autre ecran', 'grosser', 'kleiner', 'anderen monitor', 'piu grande', 'piu piccola', 'altro monitor', 'больше', 'меньше', 'другой монитор', 'サイズ', '大きく', '小さく', 'モニター', '크기', '크게', '작게', '모니터', '大小', '变大', '变小', '显示器'],
     text: {
       en: ['Size and monitor', 'Hold Ctrl and turn the mouse wheel over me to make me bigger or smaller. Which monitor I live on is in Settings > Capri.'],
       es: ['Tamaño y monitor', 'Mantené Ctrl y girá la rueda del mouse encima mío para agrandarme o achicarme. En qué monitor vivo se elige en Configuración > Capri.'],
@@ -91,7 +98,8 @@ export const CAPABILITIES: Capability[] = [
     id: 'away',
     category: 'move',
     say: {},
-    keywords: ['hide', 'away', 'disappear', 'go away', 'leave me', 'escond', 'ocult', 'desaparec', 'esconder', 'sumir', 'cacher', 'disparai', 'verstecken', 'verschwind', 'nascond', 'sparire', 'спрят', 'исчез', '隠れ', '消え', '숨', '사라', '隐藏', '躲', '消失'],
+    keywords: [],
+    generic: ['hide', 'away', 'disappear', 'go away', 'leave me', 'escond', 'ocult', 'desaparec', 'esconder', 'sumir', 'cacher', 'disparai', 'verstecken', 'verschwind', 'nascond', 'sparire', 'спрят', 'исчез', '隠れ', '消え', '숨', '사라', '隐藏', '躲', '消失'],
     text: {
       en: ['Send me away', 'Press {hotkey:away} and I hide and stay quiet; press it again, or use Show Capri in the tray, to bring me back.'],
       es: ['Mandarme a descansar', 'Apretá {hotkey:away} y me escondo y me quedo callada; apretalo de nuevo, o usá Mostrar Capri en la bandeja, para que vuelva.'],
@@ -109,18 +117,19 @@ export const CAPABILITIES: Capability[] = [
     id: 'talk',
     category: 'voice',
     say: {},
-    keywords: ['talk to you', 'speak to you', 'talk with you', 'push to talk', 'microphone', 'mic', 'hey capri', 'listen to me', 'hablarte', 'hablar con vos', 'hablar contigo', 'microfono', 'me escuches', 'escucharme', 'falar com voce', 'microfone', 'me ouvir', 'te parler', 'micro', 'm ecouter', 'mit dir sprechen', 'mikrofon', 'mir zuhoren', 'parlarti', 'parlare con te', 'microfono', 'ascoltarmi', 'говорить с тобой', 'микрофон', 'меня слушала', '話しかけ', 'マイク', '聞いて', '마이크', '너한테 말', '말 걸', '麦克风', '和你说话', '跟你说话'],
+    keywords: ['push to talk', 'hey capri', 'talk to you', 'speak to you', 'talk with you', 'hablarte', 'hablar con vos', 'hablar contigo', 'falar com voce', 'te parler', 'mit dir sprechen', 'parlarti', 'parlare con te', 'говорить с тобой', '話しかけ', '말 걸', '和你说话', '跟你说话'],
+    generic: ['microphone', 'mic', 'listen to me', 'microfono', 'me escuches', 'escucharme', 'microfone', 'me ouvir', 'micro', 'm ecouter', 'mikrofon', 'mir zuhoren', 'microfono', 'ascoltarmi', 'микрофон', 'меня слушала', 'マイク', '聞いて', '마이크', '너한테 말', '麦克风'],
     text: {
-      en: ['Talk to me', 'Hold {hotkey:talk} and speak, then let go. {hotkey:listen} keeps me listening so you can just say "Hey Capri", and {hotkey:chat} opens the chat to type. You can change the keys in Settings > Capri.'],
-      es: ['Hablarme', 'Mantené {hotkey:talk} y hablá, después soltá. {hotkey:listen} me deja escuchando para que solo digas "Hey Capri", y {hotkey:chat} abre el chat para escribir. Las teclas se cambian en Configuración > Capri.'],
-      pt: ['Falar comigo', 'Segure {hotkey:talk} e fale, depois solte. {hotkey:listen} me deixa ouvindo para você só dizer "Hey Capri", e {hotkey:chat} abre o chat para digitar. As teclas mudam em Configurações > Capri.'],
-      fr: ['Me parler', 'Maintiens {hotkey:talk} et parle, puis relâche. {hotkey:listen} me garde à l\'écoute pour que tu dises juste "Hey Capri", et {hotkey:chat} ouvre le chat pour écrire. Les touches se changent dans Paramètres > Capri.'],
-      de: ['Mit mir sprechen', 'Halte {hotkey:talk} gedrückt und sprich, dann loslassen. {hotkey:listen} lässt mich zuhören, damit du einfach "Hey Capri" sagen kannst, und {hotkey:chat} öffnet den Chat zum Tippen. Die Tasten änderst du unter Einstellungen > Capri.'],
-      it: ['Parlarmi', 'Tieni premuto {hotkey:talk} e parla, poi lascia. {hotkey:listen} mi tiene in ascolto così basta dire "Hey Capri", e {hotkey:chat} apre la chat per scrivere. I tasti si cambiano in Impostazioni > Capri.'],
-      ru: ['Поговорить со мной', 'Зажми {hotkey:talk} и говори, потом отпусти. {hotkey:listen} оставляет меня слушать, чтобы ты просто сказал «Hey Capri», а {hotkey:chat} открывает чат. Клавиши меняются в Настройки > Capri.'],
-      ja: ['話しかける', '{hotkey:talk}を押しながら話して、離してね。{hotkey:listen}で聞きっぱなしにすれば「Hey Capri」と言うだけでいいし、{hotkey:chat}でチャットが開くよ。キーは設定 > Capriで変えられるよ。'],
-      ko: ['나에게 말하기', '{hotkey:talk}를 누른 채 말하고 떼면 돼. {hotkey:listen}를 누르면 계속 들어서 "Hey Capri"라고만 하면 되고, {hotkey:chat}는 채팅을 열어. 키는 설정 > Capri에서 바꿀 수 있어.'],
-      zh: ['和我说话', '按住 {hotkey:talk} 说话，说完松开。{hotkey:listen} 让我一直听着，你只要说“Hey Capri”；{hotkey:chat} 打开聊天框打字。按键可以在设置 > Capri 里改。']
+      en: ['Talk to me', 'Hold {hotkey:talk} and speak, then let go. {hotkey:listen} keeps me listening so you can just say "Hey Capri", and {hotkey:chat} opens the chat to type. You can change the keys in Settings > TTS.'],
+      es: ['Hablarme', 'Mantené {hotkey:talk} y hablá, después soltá. {hotkey:listen} me deja escuchando para que solo digas "Hey Capri", y {hotkey:chat} abre el chat para escribir. Las teclas se cambian en Configuración > TTS.'],
+      pt: ['Falar comigo', 'Segure {hotkey:talk} e fale, depois solte. {hotkey:listen} me deixa ouvindo para você só dizer "Hey Capri", e {hotkey:chat} abre o chat para digitar. As teclas mudam em Configurações > TTS.'],
+      fr: ['Me parler', 'Maintiens {hotkey:talk} et parle, puis relâche. {hotkey:listen} me garde à l\'écoute pour que tu dises juste "Hey Capri", et {hotkey:chat} ouvre le chat pour écrire. Les touches se changent dans Paramètres > TTS.'],
+      de: ['Mit mir sprechen', 'Halte {hotkey:talk} gedrückt und sprich, dann loslassen. {hotkey:listen} lässt mich zuhören, damit du einfach "Hey Capri" sagen kannst, und {hotkey:chat} öffnet den Chat zum Tippen. Die Tasten änderst du unter Einstellungen > TTS.'],
+      it: ['Parlarmi', 'Tieni premuto {hotkey:talk} e parla, poi lascia. {hotkey:listen} mi tiene in ascolto così basta dire "Hey Capri", e {hotkey:chat} apre la chat per scrivere. I tasti si cambiano in Impostazioni > TTS.'],
+      ru: ['Поговорить со мной', 'Зажми {hotkey:talk} и говори, потом отпусти. {hotkey:listen} оставляет меня слушать, чтобы ты просто сказал «Hey Capri», а {hotkey:chat} открывает чат. Клавиши меняются в Настройки > TTS.'],
+      ja: ['話しかける', '{hotkey:talk}を押しながら話して、離してね。{hotkey:listen}で聞きっぱなしにすれば「Hey Capri」と言うだけでいいし、{hotkey:chat}でチャットが開くよ。キーは設定 > TTSで変えられるよ。'],
+      ko: ['나에게 말하기', '{hotkey:talk}를 누른 채 말하고 떼면 돼. {hotkey:listen}를 누르면 계속 들어서 "Hey Capri"라고만 하면 되고, {hotkey:chat}는 채팅을 열어. 키는 설정 > TTS에서 바꿀 수 있어.'],
+      zh: ['和我说话', '按住 {hotkey:talk} 说话，说完松开。{hotkey:listen} 让我一直听着，你只要说“Hey Capri”；{hotkey:chat} 打开聊天框打字。按键可以在设置 > TTS 里改。']
     }
   },
   {
@@ -131,7 +140,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['talk in French'], es: ['habla en inglés'], pt: ['fala em inglês'], fr: ['parle en anglais'], de: ['sprich englisch'], it: ['parla in inglese'],
       ru: ['говори по-английски'], ja: ['英語で話して'], ko: ['영어로 말해줘'], zh: ['用英语说话']
     },
-    keywords: ['language', 'languages', 'idioma', 'idiomas', 'lengua', 'lingua', 'langue', 'sprache', 'язык', '言語', '언어', '语言'],
+    keywords: [],
+    generic: ['language', 'languages', 'idioma', 'idiomas', 'lengua', 'lingua', 'langue', 'sprache', 'язык', '言語', '언어', '语言'],
     text: {
       en: ['Change my language', 'Tell me {say} (any of my ten languages) and I switch. The language I hear, speak and write in can also be fixed in Settings > Language.'],
       es: ['Cambiar mi idioma', 'Decime {say} (cualquiera de mis diez idiomas) y cambio. El idioma en que escucho, hablo y escribo también se fija en Configuración > Idioma.'],
@@ -153,7 +163,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['watch my screen'], es: ['mirá mi pantalla'], pt: ['olha minha tela'], fr: ['regarde mon ecran'], de: ['schau dir meinen bildschirm an'], it: ['guarda il mio schermo'],
       ru: ['посмотри на мой экран'], ja: ['画面を見て'], ko: ['내 화면 봐줘'], zh: ['看我的屏幕']
     },
-    keywords: ['watch my screen', 'see my screen', 'look at my screen', 'watch the screen', 'screen watch', 'see what i', 'mires mi pantalla', 'mire mi pantalla', 'veas mi pantalla', 'vea mi pantalla', 'mirar la pantalla', 'ver la pantalla', 'ver mi pantalla', 'mirar mi pantalla', 'minha tela', 'mon ecran', 'bildschirm', 'mio schermo', 'экран', '画面', '화면', '屏幕'],
+    keywords: ['watch my screen', 'see my screen', 'look at my screen', 'screen watch', 'mires mi pantalla', 'mire mi pantalla', 'veas mi pantalla', 'vea mi pantalla', 'olhar minha tela', 'olhe minha tela', 'regardes mon ecran', 'regarder mon ecran', 'meinen bildschirm ansehen', 'meinen bildschirm anschauen', 'guardare il mio schermo', 'guardi il mio schermo', 'смотрела мой экран', 'смотреть мой экран', '画面を見て', '내 화면', '看我的屏幕'],
+    generic: ['watch the screen', 'see what i', 'mirar la pantalla', 'ver la pantalla', 'ver mi pantalla', 'mirar mi pantalla', 'minha tela', 'mon ecran', 'bildschirm', 'mio schermo', 'экран', '画面', '화면', '屏幕'],
     text: {
       en: ['Watch your screen', 'Tell me {say} and I watch what you play or watch and react to it live; "stop watching" turns it off. On Windows and Linux it needs a vision model in Ollama (Settings > AI & models offers one).'],
       es: ['Mirar tu pantalla', 'Decime {say} y miro lo que jugás o mirás y reacciono en vivo; "dejá de mirar" lo apaga. En Windows y Linux necesita un modelo de visión en Ollama (Configuración > IA y modelos te ofrece uno).'],
@@ -175,7 +186,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['open scanner'], fr: ['ouvre le scanner'], de: ['öffne den scanner'], it: ['apri lo scanner'], pt: ['abre o scanner'],
       ru: ['открой сканер'], ja: ['スキャナーを開いて'], ko: ['스캐너 열어줘'], zh: ['打开扫描仪'], es: ['abrí el scanner']
     },
-    keywords: ['scanner', 'scan', 'escanea', 'escanear', 'escaneo', 'learn a drawing', 'aprender un dibujo', 'aprendas un dibujo', 'scann', 'scanne', 'scansiona', 'сканер', 'скан', 'スキャン', '스캔', '扫描'],
+    keywords: ['learn a drawing', 'aprender un dibujo', 'aprendas un dibujo'],
+    generic: ['scanner', 'scan', 'escanea', 'escanear', 'escaneo', 'scann', 'scanne', 'scansiona', 'сканер', 'скан', 'スキャン', '스캔', '扫描'],
     text: {
       en: ['Scan something', 'Say {say}, drag the frame over what you want to show me and say "scan". I tell you what I see, and I can learn drawings and logos so I recognize them next time.'],
       es: ['Escanear algo', 'Decime {say}, arrastrá el marco sobre lo que me quieras mostrar y decí "escaneá". Te digo qué veo, y puedo aprender dibujos y logos para reconocerlos la próxima.'],
@@ -198,6 +210,7 @@ export const CAPABILITIES: Capability[] = [
       it: ['attiva la modalità gioco'], ru: ['включи игровой режим'], ja: ['ゲームモードにして'], ko: ['게임 모드 켜줘'], zh: ['打开游戏模式']
     },
     keywords: ['gaming mode', 'game mode', 'gamemode', 'modo gaming', 'modo juego', 'modo gamer', 'modo jogo', 'mode gaming', 'mode jeu', 'spielmodus', 'gaming modus', 'modalita gioco', 'игровой режим', 'ゲームモード', '게임 모드', '游戏模式'],
+    generic: [],
     text: {
       en: ['Gaming mode', 'Press {hotkey:gaming} or tell me {say}: I shrink to eye mode in a corner so I don\'t cover your game, and still react. "turn off gaming mode" (or the same key) brings me back.'],
       es: ['Modo gaming', 'Apretá {hotkey:gaming} o decime {say}: me achico en modo ojos en una esquina para no taparte el juego, y sigo reaccionando. "desactivá el modo gaming" (o la misma tecla) me devuelve.'],
@@ -221,7 +234,8 @@ export const CAPABILITIES: Capability[] = [
       ru: ['выключи игровые комментарии', 'включи игровые комментарии'], ja: ['ゲーム実況をオフにして', 'ゲーム実況をオンにして'], ko: ['게임 해설 꺼줘', '게임 해설 켜줘'], zh: ['关闭游戏解说', '开启游戏解说'],
       es: ['silencia los juegos', 'activá los comentarios de juegos']
     },
-    keywords: ['commentary', 'comment on my game', 'react to my game', 'quiet during', 'comentario', 'comentarios', 'silencia', 'commentaire', 'kommentar', 'commento', 'commenti', 'комментар', '実況', '해설', '解说'],
+    keywords: ['comment on my game', 'react to my game', '実況', '해설', '解说'],
+    generic: ['commentary', 'quiet during', 'comentario', 'comentarios', 'silencia', 'commentaire', 'kommentar', 'commento', 'commenti', 'комментар'],
     text: {
       en: ['Game reactions', 'I react to League, VALORANT and Cyberpunk on my own while you play. Say {say} for silence and {say2} to bring my comments back.'],
       es: ['Reacciones en juegos', 'Reacciono sola al LoL, VALORANT y Cyberpunk mientras jugás. Decí {say} para que me calle y {say2} para que vuelva a comentar.'],
@@ -246,7 +260,8 @@ export const CAPABILITIES: Capability[] = [
       ru: ['найди игру в валоранте', 'залочь Jett в валоранте'], ja: ['ヴァロでマッチを探して', 'ヴァロでJettをロックして'], ko: ['발로란트 매치 찾아줘', '발로란트에서 Jett 락해줘'],
       zh: ['瓦罗兰特找一局', '在瓦罗兰特里选Jett'], es: ['buscá partida de valorant', 'lockeá a Jett en valorant']
     },
-    keywords: ['valorant', 'valo', 'jett', 'agent select', 'lock an agent', 'lockear', 'agente de valorant', 'валорант', 'ヴァロ', '발로란트', '瓦罗兰特'],
+    keywords: [],
+    generic: ['valorant', 'valo', 'jett', 'agent select', 'lock an agent', 'lockear', 'agente de valorant', 'валорант', 'ヴァロ', '발로란트', '瓦罗兰特'],
     text: {
       en: ['VALORANT', 'With VALORANT open, say {say} to queue (I understand competitive, unrated, swiftplay...) and {say2} to lock an agent. I also react to your rounds.'],
       es: ['VALORANT', 'Con VALORANT abierto, decí {say} para entrar a la cola (entiendo competitiva, normal, rápida...) y {say2} para lockear un agente. También reacciono a tus rondas.'],
@@ -263,14 +278,15 @@ export const CAPABILITIES: Capability[] = [
   {
     id: 'league',
     category: 'gaming',
-    platforms: ['win32', 'linux'],
+    platforms: ['win32'],
     commands: ['find a match', 'turn on auto accept'],
     say: {
       en: ['find a match', 'turn on auto accept'], fr: ['cherche une partie', 'active l acceptation automatique'], de: ['suche ein spiel', 'aktiviere auto accept'],
       it: ['cerca una partita', 'attiva l accettazione automatica'], pt: ['procura uma partida', 'ativa o aceitar automatico'], ru: ['найди игру', 'включи автопринятие'],
       ja: ['マッチを探して', '自動承諾をオンにして'], ko: ['매치 찾아줘', '자동 수락 켜줘'], zh: ['找一局', '开启自动接受'], es: ['buscá partida', 'activá el auto aceptar']
     },
-    keywords: ['league', 'league of legends', 'champion select', 'champ select', 'auto accept', 'auto aceptar', 'campeon', 'champion', 'campeao', 'campione', 'чемпион', 'лига легенд', 'リーグ', 'チャンピオン', '챔피언', '英雄联盟'],
+    keywords: [],
+    generic: ['league', 'league of legends', 'champion select', 'champ select', 'auto accept', 'auto aceptar', 'campeon', 'champion', 'campeao', 'campione', 'чемпион', 'лига легенд', 'リーグ', 'チャンピオン', '챔피언', '英雄联盟'],
     text: {
       en: ['League of Legends', 'With the League client open, say {say} to queue and {say2} so I accept the match for you. In champ select, "pick Ahri" or "ban Yasuo" work too.'],
       es: ['League of Legends', 'Con el cliente del LoL abierto, decí {say} para entrar a la cola y {say2} para que acepte la partida por vos. En la selección también funcionan "elegí a Ahri" o "baneá a Yasuo".'],
@@ -292,18 +308,19 @@ export const CAPABILITIES: Capability[] = [
     say: {
       en: ['clip that'], es: ['clipeá eso'], fr: ['clippe ça'], de: ['clip das'], it: ['clippa questo'], pt: ['clipa isso'], ru: ['сделай клип'], ja: ['クリップして'], ko: ['클립 따줘'], zh: ['剪辑一下']
     },
-    keywords: ['clip', 'clip that', 'instant replay', 'replay', 'highlight', 'clipea', 'clipear', 'clipee', 'clipar', 'clipper', 'clippen', 'clippare', 'клип', 'クリップ', '클립', '剪辑', '精彩'],
+    keywords: ['clip that', 'clipea', 'clipear', 'clipee', 'clipar', 'clipper', 'clippen', 'clippare'],
+    generic: ['clip', 'instant replay', 'replay', 'highlight', 'клип', 'クリップ', '클립', '剪辑', '精彩'],
     text: {
-      en: ['Clip a play', 'Say {say} right after a good play and I save the last moments with your instant replay (NVIDIA ShadowPlay or Xbox Game Bar).'],
-      es: ['Clipear una jugada', 'Decí {say} justo después de una buena jugada y guardo los últimos momentos con tu repetición instantánea (NVIDIA ShadowPlay o Xbox Game Bar).'],
-      pt: ['Clipar uma jogada', 'Diga {say} logo depois de uma boa jogada e eu salvo os últimos momentos com seu replay instantâneo (NVIDIA ShadowPlay ou Xbox Game Bar).'],
-      fr: ['Clipper une action', 'Dis {say} juste après une belle action et j\'enregistre les derniers instants avec ta relecture instantanée (NVIDIA ShadowPlay ou Xbox Game Bar).'],
-      de: ['Einen Clip speichern', 'Sag {say} direkt nach einem guten Spielzug und ich speichere die letzten Momente mit deinem Instant Replay (NVIDIA ShadowPlay oder Xbox Game Bar).'],
-      it: ['Clippare un\'azione', 'Di\' {say} subito dopo una bella azione e salvo gli ultimi momenti con il tuo replay istantaneo (NVIDIA ShadowPlay o Xbox Game Bar).'],
-      ru: ['Сохранить клип', 'Скажи {say} сразу после классного момента, и я сохраню последние секунды через мгновенный повтор (NVIDIA ShadowPlay или Xbox Game Bar).'],
-      ja: ['クリップを保存', 'いいプレイの直後に{say}と言えば、インスタントリプレイ（NVIDIA ShadowPlayかXbox Game Bar）で直前の場面を保存するよ。'],
-      ko: ['클립 저장', '멋진 플레이 직후에 {say}라고 하면 인스턴트 리플레이(NVIDIA ShadowPlay나 Xbox Game Bar)로 방금 장면을 저장해.'],
-      zh: ['保存精彩片段', '打出好操作后马上说{say}，我就用即时回放（NVIDIA ShadowPlay 或 Xbox Game Bar）保存刚才的画面。']
+      en: ['Clip a play', 'Say {say} right after a good play and I save the last moments with your instant replay (NVIDIA ShadowPlay or Xbox Game Bar; on Linux I press F8 for your recorder).'],
+      es: ['Clipear una jugada', 'Decí {say} justo después de una buena jugada y guardo los últimos momentos con tu repetición instantánea (NVIDIA ShadowPlay o Xbox Game Bar; en Linux aprieto F8 para tu grabador).'],
+      pt: ['Clipar uma jogada', 'Diga {say} logo depois de uma boa jogada e eu salvo os últimos momentos com seu replay instantâneo (NVIDIA ShadowPlay ou Xbox Game Bar; no Linux eu aperto F8 para o seu gravador).'],
+      fr: ['Clipper une action', 'Dis {say} juste après une belle action et j\'enregistre les derniers instants avec ta relecture instantanée (NVIDIA ShadowPlay ou Xbox Game Bar ; sous Linux, j\'appuie sur F8 pour ton enregistreur).'],
+      de: ['Einen Clip speichern', 'Sag {say} direkt nach einem guten Spielzug und ich speichere die letzten Momente mit deinem Instant Replay (NVIDIA ShadowPlay oder Xbox Game Bar; unter Linux drücke ich F8 für deinen Recorder).'],
+      it: ['Clippare un\'azione', 'Di\' {say} subito dopo una bella azione e salvo gli ultimi momenti con il tuo replay istantaneo (NVIDIA ShadowPlay o Xbox Game Bar; su Linux premo F8 per il tuo registratore).'],
+      ru: ['Сохранить клип', 'Скажи {say} сразу после классного момента, и я сохраню последние секунды через мгновенный повтор (NVIDIA ShadowPlay или Xbox Game Bar; на Linux я нажимаю F8 для твоей программы записи).'],
+      ja: ['クリップを保存', 'いいプレイの直後に{say}と言えば、インスタントリプレイ（NVIDIA ShadowPlayかXbox Game Bar、LinuxならレコーダーのF8）で直前の場面を保存するよ。'],
+      ko: ['클립 저장', '멋진 플레이 직후에 {say}라고 하면 인스턴트 리플레이(NVIDIA ShadowPlay나 Xbox Game Bar, Linux에서는 녹화 프로그램용 F8)로 방금 장면을 저장해.'],
+      zh: ['保存精彩片段', '打出好操作后马上说{say}，我就用即时回放（NVIDIA ShadowPlay 或 Xbox Game Bar；在 Linux 上我会替你的录制软件按 F8）保存刚才的画面。']
     }
   },
   {
@@ -315,7 +332,8 @@ export const CAPABILITIES: Capability[] = [
       it: ['guardiamo youtube insieme', 'scegli tu'], pt: ['vamos assistir youtube juntos', 'escolhe você'], ru: ['давай посмотрим ютуб вместе', 'выбери сама'],
       ja: ['一緒にyoutubeを見よう', 'あなたが選んで'], ko: ['같이 유튜브 보자', '네가 골라'], zh: ['一起看youtube', '你来选']
     },
-    keywords: ['youtube', 'yt', 'watch party', 'watch together', 'ver juntos', 'veamos juntos', 'mirar juntos', 'assistir juntos', 'regarder ensemble', 'zusammen schauen', 'guardare insieme', 'смотреть вместе', 'ютуб', '一緒に見', '같이 보', '一起看', '油管'],
+    keywords: ['watch party', 'watch together', 'ver juntos', 'veamos juntos', 'mirar juntos', 'assistir juntos', 'regarder ensemble', 'zusammen schauen', 'guardare insieme', 'смотреть вместе', '一緒に見', '같이 보', '一起看'],
+    generic: ['youtube', 'yt', 'ютуб', '油管'],
     text: {
       en: ['YouTube together', 'Say {say}: I open YouTube, scroll your feed with you and suggest videos. Say {say2} and I pick one myself; then I watch and react with you.'],
       es: ['YouTube juntos', 'Decí {say}: abro YouTube, recorro tu feed con vos y te propongo videos. Decí {say2} y elijo yo; después lo miro y reacciono con vos.'],
@@ -337,7 +355,8 @@ export const CAPABILITIES: Capability[] = [
       en: ["let's watch tiktok together"], es: ['veamos tiktoks'], fr: ['regardons tiktok ensemble'], de: ['lass uns zusammen tiktok schauen'], it: ['guardiamo tiktok insieme'],
       pt: ['vamos assistir tiktok juntos'], ru: ['давай посмотрим тикток вместе'], ja: ['一緒にtiktokを見よう'], ko: ['같이 틱톡 보자'], zh: ['一起看tiktok']
     },
-    keywords: ['tiktok', 'tik tok', 'tiktoks', 'reels', 'тикток', 'ティックトック', '틱톡', '抖音'],
+    keywords: [],
+    generic: ['tiktok', 'tik tok', 'tiktoks', 'reels', 'тикток', 'ティックトック', '틱톡', '抖音'],
     text: {
       en: ['TikTok together', 'Say {say}: I comment on each TikTok and move on when it ends. Say "next" to skip and "like" to drop a like.'],
       es: ['TikTok juntos', 'Decí {say}: comento cada TikTok y paso al siguiente cuando termina. Decí "siguiente" para saltear y "dale like" para darle like.'],
@@ -356,22 +375,23 @@ export const CAPABILITIES: Capability[] = [
     category: 'music',
     commands: ['play {x} on spotify', 'skip song', 'pause the music'],
     say: {
-      en: ['play Daft Punk on spotify', 'skip song'], es: ['poné Daft Punk en spotify', 'pasa la canción'], fr: ['joue Daft Punk sur spotify', 'chanson suivante'],
+      en: ['play Daft Punk on spotify', 'skip song'], es: ['pone Daft Punk en spotify', 'pasa la canción'], fr: ['joue Daft Punk sur spotify', 'chanson suivante'],
       de: ['spiele Daft Punk auf spotify', 'nächstes lied'], it: ['metti Daft Punk su spotify', 'prossima canzone'], pt: ['toca Daft Punk no spotify', 'proxima musica'],
       ru: ['включи Daft Punk на spotify', 'следующая песня'], ja: ['spotifyでDaft Punkを再生して', '次の曲'], ko: ['스포티파이에서 Daft Punk 틀어줘', '다음 곡'], zh: ['在spotify上播放Daft Punk', '下一首']
     },
-    keywords: ['music', 'song', 'songs', 'spotify', 'playlist', 'youtube music', 'musica', 'cancion', 'canciones', 'cancao', 'musique', 'chanson', 'musik', 'lied', 'canzone', 'музык', 'песн', '音楽', '曲', '음악', '노래', '音乐', '歌'],
+    keywords: ['play music', 'put on music', 'poner musica', 'pongo musica', 'pongas musica', 'tocar musica', 'mettre de la musique', 'musik abspielen', 'mettere musica', 'включить музыку', '音楽をかけ', '음악 틀', '放音乐', '播放音乐'],
+    generic: ['music', 'song', 'songs', 'spotify', 'playlist', 'youtube music', 'musica', 'cancion', 'canciones', 'cancao', 'musique', 'chanson', 'musik', 'lied', 'canzone', 'музык', 'песн', '音楽', '曲', '음악', '노래', '音乐', '歌'],
     text: {
-      en: ['Play music', 'Say {say} (or YouTube Music) and I put it on; {say2}, "pause the music" and "previous track" work too. The default platform is in Settings > Apps.'],
-      es: ['Poner música', 'Decí {say} (o YouTube Music) y lo pongo; {say2}, "pausá la música" y "tema anterior" también funcionan. La plataforma por defecto está en Configuración > Apps.'],
-      pt: ['Tocar música', 'Diga {say} (ou YouTube Music) e eu coloco; {say2}, "pausa a música" e "música anterior" também funcionam. A plataforma padrão fica em Configurações > Apps.'],
-      fr: ['Mettre de la musique', 'Dis {say} (ou YouTube Music) et je lance ; {say2}, "mets la musique en pause" et "chanson précédente" marchent aussi. La plateforme par défaut est dans Paramètres > Applis.'],
-      de: ['Musik abspielen', 'Sag {say} (oder YouTube Music) und ich lege los; {say2}, "pausiere die musik" und "vorheriges lied" gehen auch. Die Standardplattform steht unter Einstellungen > Apps.'],
-      it: ['Mettere musica', 'Di\' {say} (o YouTube Music) e la metto; anche {say2}, "metti in pausa la musica" e "canzone precedente" funzionano. La piattaforma predefinita è in Impostazioni > App.'],
-      ru: ['Включить музыку', 'Скажи {say} (или YouTube Music), и я включу; {say2}, «поставь музыку на паузу» и «предыдущая песня» тоже работают. Платформа по умолчанию — в Настройки > Приложения.'],
-      ja: ['音楽をかける', '{say}（YouTube Musicでも）と言えばかけるよ。{say2}、「音楽を止めて」、「前の曲」も使えるよ。いつものサービスは設定 > アプリで選べるよ。'],
-      ko: ['음악 틀기', '{say}(YouTube Music도 돼)라고 하면 틀어줄게. {say2}, "음악 멈춰줘", "이전 곡"도 돼. 기본 플랫폼은 설정 > 앱에 있어.'],
-      zh: ['放音乐', '说{say}（YouTube Music 也行）我就播放；{say2}、“暂停音乐”、“上一首”也都可以。默认平台在设置 > 应用里。']
+      en: ['Play music', 'Say {say} (or YouTube Music) and I put it on; {say2}, "pause the music" and "previous track" work too. The default platform is in Settings > TTS.'],
+      es: ['Poner música', 'Decí {say} (o YouTube Music) y lo pongo; {say2}, "pausá la música" y "anterior" también funcionan. La plataforma por defecto está en Configuración > TTS.'],
+      pt: ['Tocar música', 'Diga {say} (ou YouTube Music) e eu coloco; {say2}, "pausa a música" e "música anterior" também funcionam. A plataforma padrão fica em Configurações > TTS.'],
+      fr: ['Mettre de la musique', 'Dis {say} (ou YouTube Music) et je lance ; {say2}, "mets la musique en pause" et "chanson précédente" marchent aussi. La plateforme par défaut est dans Paramètres > TTS.'],
+      de: ['Musik abspielen', 'Sag {say} (oder YouTube Music) und ich lege los; {say2}, "pausiere die musik" und "vorheriges lied" gehen auch. Die Standardplattform steht unter Einstellungen > TTS.'],
+      it: ['Mettere musica', 'Di\' {say} (o YouTube Music) e la metto; anche {say2}, "metti in pausa la musica" e "canzone precedente" funzionano. La piattaforma predefinita è in Impostazioni > TTS.'],
+      ru: ['Включить музыку', 'Скажи {say} (или YouTube Music), и я включу; {say2}, «поставь музыку на паузу» и «предыдущая песня» тоже работают. Платформа по умолчанию — в Настройки > TTS.'],
+      ja: ['音楽をかける', '{say}（YouTube Musicでも）と言えばかけるよ。{say2}、「音楽を止めて」、「前の曲」も使えるよ。いつものサービスは設定 > TTSで選べるよ。'],
+      ko: ['음악 틀기', '{say}(YouTube Music도 돼)라고 하면 틀어줄게. {say2}, "음악 멈춰줘", "이전 곡"도 돼. 기본 플랫폼은 설정 > TTS에 있어.'],
+      zh: ['放音乐', '说{say}（YouTube Music 也行）我就播放；{say2}、“暂停音乐”、“上一首”也都可以。默认平台在设置 > TTS 里。']
     }
   },
   {
@@ -382,12 +402,13 @@ export const CAPABILITIES: Capability[] = [
       en: ['what apps do you know'], es: ['qué apps conocés'], pt: ['quais apps voce conhece'], fr: ['quelles applis connais tu'], de: ['welche apps kennst du'], it: ['quali app conosci'],
       ru: ['какие приложения ты знаешь'], ja: ['どのアプリを知ってる'], ko: ['어떤 앱 알아'], zh: ['你知道哪些应用']
     },
-    keywords: ['app', 'apps', 'application', 'applications', 'program', 'programs', 'open discord', 'open chrome', 'open steam', 'aplicacion', 'aplicaciones', 'programa', 'programas', 'aplicativo', 'appli', 'applis', 'programme', 'programm', 'applicazione', 'приложени', 'программ', 'アプリ', '앱', '应用', '程序'],
+    keywords: ['open discord', 'open chrome', 'open steam'],
+    generic: ['app', 'apps', 'application', 'applications', 'program', 'programs', 'aplicacion', 'aplicaciones', 'programa', 'programas', 'aplicativo', 'appli', 'applis', 'programme', 'programm', 'applicazione', 'приложени', 'программ', 'アプリ', '앱', '应用', '程序'],
     text: {
       en: ['Open and close apps', 'Say "open Discord" or "close Chrome" and I do it. Ask {say} to hear the list, and add your own in Settings > Apps.'],
       es: ['Abrir y cerrar apps', 'Decí "abrí Discord" o "cerrá Chrome" y lo hago. Preguntame {say} para escuchar la lista, y sumá las tuyas en Configuración > Apps.'],
       pt: ['Abrir e fechar apps', 'Diga "abre o Discord" ou "fecha o Chrome" e eu faço. Pergunte {say} para ouvir a lista, e adicione os seus em Configurações > Apps.'],
-      fr: ['Ouvrir et fermer des applis', 'Dis "ouvre Discord" ou "ferme Chrome" et je le fais. Demande {say} pour entendre la liste, et ajoute les tiennes dans Paramètres > Applis.'],
+      fr: ['Ouvrir et fermer des applis', 'Dis "ouvre Discord" ou "ferme Chrome" et je le fais. Demande {say} pour entendre la liste, et ajoute les tiennes dans Paramètres > Apps.'],
       de: ['Apps öffnen und schließen', 'Sag "öffne Discord" oder "schließe Chrome" und ich mache es. Frag {say}, um die Liste zu hören, und füge eigene unter Einstellungen > Apps hinzu.'],
       it: ['Aprire e chiudere app', 'Di\' "apri Discord" o "chiudi Chrome" e lo faccio. Chiedimi {say} per sentire la lista, e aggiungi le tue in Impostazioni > App.'],
       ru: ['Открывать и закрывать приложения', 'Скажи «открой Discord» или «закрой Chrome», и я сделаю. Спроси {say}, чтобы услышать список, а свои добавь в Настройки > Приложения.'],
@@ -405,7 +426,8 @@ export const CAPABILITIES: Capability[] = [
       it: ['cerca su internet mod di cyberpunk'], pt: ['pesquisa na internet mods de cyberpunk'], ru: ['найди в интернете моды для cyberpunk'],
       ja: ['cyberpunkのmodをネットで検索して'], ko: ['인터넷에서 사이버펑크 모드 검색해줘'], zh: ['在网上搜索赛博朋克模组']
     },
-    keywords: ['search the web', 'google', 'look up online', 'web search', 'internet', 'buscar en internet', 'busques en internet', 'googlear', 'pesquisar na internet', 'sur internet', 'im internet', 'su internet', 'в интернете', 'ネットで検索', '인터넷', '网上搜索', '上网'],
+    keywords: ['search the web', 'web search', 'buscar en internet', 'busques en internet'],
+    generic: ['google', 'look up online', 'internet', 'googlear', 'pesquisar na internet', 'sur internet', 'im internet', 'su internet', 'в интернете', 'ネットで検索', '인터넷', '网上搜索', '上网'],
     text: {
       en: ['Search the web', 'Say {say} and I open the search in your browser.'],
       es: ['Buscar en internet', 'Decí {say} y abro la búsqueda en tu navegador.'],
@@ -423,7 +445,8 @@ export const CAPABILITIES: Capability[] = [
     id: 'files',
     category: 'pc',
     say: { en: ['make a text file called notes'], es: ['creá un archivo de texto llamado notas'] },
-    keywords: ['text file', 'homework', 'create a file', 'make a file', 'archivo de texto', 'crear un archivo', 'tarea', 'arquivo de texto', 'tarefa', 'fichier texte', 'devoir', 'textdatei', 'hausaufgabe', 'file di testo', 'compiti', 'текстовый файл', 'домашк', 'テキストファイル', '宿題', '텍스트 파일', '숙제', '文本文件', '作业'],
+    keywords: [],
+    generic: ['text file', 'homework', 'create a file', 'make a file', 'archivo de texto', 'crear un archivo', 'tarea', 'arquivo de texto', 'tarefa', 'fichier texte', 'devoir', 'textdatei', 'hausaufgabe', 'file di testo', 'compiti', 'текстовый файл', 'домашк', 'テキストファイル', '宿題', '텍스트 파일', '숙제', '文本文件', '作业'],
     text: {
       en: ['Files and homework', 'Say {say} and I create it on your Desktop. I can also read, edit or solve a plain-text file: "do my homework in file tarea.txt".'],
       es: ['Archivos y tareas', 'Decí {say} y lo creo en tu Escritorio. También leo, edito o resuelvo un archivo de texto: "hacé mi tarea del archivo tarea.txt".'],
@@ -448,7 +471,8 @@ export const CAPABILITIES: Capability[] = [
       ru: ['запомни что моя любимая игра Cyberpunk', 'что ты помнишь обо мне'], ja: ['好きなゲームはCyberpunkって覚えておいて', '私について何を覚えてる'],
       ko: ['제일 좋아하는 게임은 Cyberpunk라는 거 기억해줘', '나에 대해 뭘 기억해'], zh: ['请记住我最喜欢的游戏是Cyberpunk', '你记得我什么']
     },
-    keywords: ['remember about me', 'remember that', 'remember things', 'forget that', 'your memory', 'recuerdes', 'acordarte', 'acuerdes', 'olvides', 'tu memoria', 'lembrar de', 'sua memoria', 'te souvenir', 'ta memoire', 'dir merken', 'dein gedachtnis', 'ricordarti', 'tua memoria', 'запомнила', 'запомнить', 'твоя память', '覚えて', '記憶', '기억해', '기억', '记住', '记忆'],
+    keywords: ['remember about me', 'your memory', 'tu memoria', 'sua memoria', 'ta memoire', 'dein gedachtnis', 'tua memoria', 'твоя память'],
+    generic: ['remember that', 'remember things', 'forget that', 'recuerdes', 'acordarte', 'acuerdes', 'olvides', 'lembrar de', 'te souvenir', 'dir merken', 'ricordarti', 'запомнила', 'запомнить', '覚えて', '記憶', '기억해', '기억', '记住', '记忆'],
     text: {
       en: ['Remember things', 'Say {say} and I keep it. Ask {say2} to hear it back, or "forget that..." to delete it.'],
       es: ['Recordar cosas', 'Decí {say} y me lo guardo. Preguntame {say2} para escucharlo, o "olvidate de que..." para borrarlo.'],
@@ -470,7 +494,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['list macros'], fr: ['liste mes macros'], de: ['zeig meine makros'], it: ['elenca le mie macro'], pt: ['lista minhas macros'], ru: ['покажи мои макросы'],
       ja: ['マクロを見せて'], ko: ['매크로 보여줘'], zh: ['显示我的宏'], es: ['mostrame los macros']
     },
-    keywords: ['macro', 'macros', 'routine', 'shortcut phrase', 'when i say', 'cuando diga', 'rutina', 'quando eu disser', 'quand je dis', 'wenn ich sage', 'quando dico', 'макрос', 'マクロ', '매크로', '宏'],
+    keywords: ['when i say', 'cuando diga', 'quando eu disser', 'quand je dis', 'wenn ich sage', 'quando dico'],
+    generic: ['macro', 'macros', 'routine', 'shortcut phrase', 'rutina', 'макрос', 'マクロ', '매크로', '宏'],
     text: {
       en: ['Macros', 'Teach me a routine: "when I say game time, open League and play my playlist". Say the phrase and I do it all. {say} shows the ones you saved.'],
       es: ['Macros', 'Enseñame una rutina: "cuando diga hora de jugar, abrí el LoL y poné mi playlist". Decís la frase y hago todo. {say} te muestra los que guardaste.'],
@@ -493,7 +518,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['draw a cat'], es: ['dibujá un gato'], fr: ['dessine un chat'], de: ['zeichne eine katze'], it: ['disegna un gatto'], pt: ['desenha um gato'], ru: ['нарисуй кота'],
       ja: ['猫を描いて'], ko: ['고양이 그려줘'], zh: ['画一个猫']
     },
-    keywords: ['draw', 'paint', 'drawing', 'dibuj', 'pinta', 'desenh', 'dessin', 'zeichn', 'malen', 'disegn', 'рису', '描', '絵', '그려', '그림', '画'],
+    keywords: [],
+    generic: ['draw', 'paint', 'drawing', 'dibuj', 'pinta', 'desenh', 'dessin', 'zeichn', 'malen', 'disegn', 'рису', '描', '絵', '그려', '그림', '画'],
     text: {
       en: ['Draw in Paint', 'Say {say} and I open Paint and draw it myself, hands off the mouse while I work.'],
       es: ['Dibujar en Paint', 'Decí {say} y abro Paint y lo dibujo yo, sin que toques el mouse mientras trabajo.'],
@@ -515,7 +541,8 @@ export const CAPABILITIES: Capability[] = [
       en: ['what version are you'], es: ['qué versión tenés'], pt: ['qual versao voce'], fr: ['quelle version es tu'], de: ['welche version bist du'], it: ['che versione sei'],
       ru: ['какая у тебя версия'], ja: ['どのバージョン'], ko: ['무슨 버전'], zh: ['什么版本']
     },
-    keywords: ['update', 'version', 'new version', 'whats new', 'actualiz', 'version', 'novedades', 'atualiz', 'versao', 'mise a jour', 'aktualis', 'aggiorn', 'versione', 'обнов', 'верси', 'アップデート', 'バージョン', '업데이트', '버전', '更新', '版本'],
+    keywords: [],
+    generic: ['update', 'version', 'new version', 'whats new', 'actualiz', 'version', 'novedades', 'atualiz', 'versao', 'mise a jour', 'aktualis', 'aggiorn', 'versione', 'обнов', 'верси', 'アップデート', 'バージョン', '업데이트', '버전', '更新', '版本'],
     text: {
       en: ['Updates', 'Ask {say} and I tell you; "update yourself" installs the latest version and "what\'s new?" tells you what changed.'],
       es: ['Actualizaciones', 'Preguntame {say} y te digo; "actualizate" instala la última versión y "¿qué hay de nuevo?" te cuenta qué cambió.'],
@@ -533,7 +560,8 @@ export const CAPABILITIES: Capability[] = [
     id: 'brain',
     category: 'app',
     say: {},
-    keywords: ['your brain', 'brain', 'ollama', 'ai model', 'change model', 'change your model', 'api key', 'cloud provider', 'cerebro', 'cambiar el modelo', 'cambiar modelo', 'cerebro', 'trocar o modelo', 'cerveau', 'changer de modele', 'gehirn', 'modell wechseln', 'cervello', 'cambiare modello', 'мозг', 'сменить модель', '頭脳', 'モデルを変え', '두뇌', '모델 바꾸', '大脑', '换模型'],
+    keywords: ['your brain', 'change your model', 'ollama', 'tu cerebro', 'cambiar el modelo'],
+    generic: ['brain', 'ai model', 'change model', 'api key', 'cloud provider', 'cerebro', 'cambiar modelo', 'cerebro', 'trocar o modelo', 'cerveau', 'changer de modele', 'gehirn', 'modell wechseln', 'cervello', 'cambiare modello', 'мозг', 'сменить модель', '頭脳', 'モデルを変え', '두뇌', '모델 바꾸', '大脑', '换模型'],
     text: {
       en: ['My brain', 'My brain is the AI model I think with: a local one in Ollama, a cloud provider with your key, or an AI app you already use. Choose it in Settings > AI & models; Benchmark shows which one is fastest on your PC.'],
       es: ['Mi cerebro', 'Mi cerebro es el modelo de IA con el que pienso: uno local en Ollama, un proveedor en la nube con tu key, o una app de IA que ya uses. Se elige en Configuración > IA y modelos; Benchmark te muestra cuál es más rápido en tu PC.'],
@@ -541,7 +569,7 @@ export const CAPABILITIES: Capability[] = [
       fr: ['Mon cerveau', 'Mon cerveau, c\'est le modèle d\'IA avec lequel je pense : un modèle local dans Ollama, un fournisseur cloud avec ta clé, ou une appli d\'IA que tu utilises déjà. Choisis-le dans Paramètres > IA et modèles ; Benchmark montre lequel est le plus rapide sur ton PC.'],
       de: ['Mein Gehirn', 'Mein Gehirn ist das KI-Modell, mit dem ich denke: ein lokales in Ollama, ein Cloud-Anbieter mit deinem Schlüssel oder eine KI-App, die du schon nutzt. Wähle es unter Einstellungen > KI & Modelle; Benchmark zeigt, welches auf deinem PC am schnellsten ist.'],
       it: ['Il mio cervello', 'Il mio cervello è il modello di IA con cui penso: uno locale in Ollama, un provider cloud con la tua chiave, o un\'app di IA che usi già. Si sceglie in Impostazioni > IA e modelli; Benchmark mostra quale è più veloce sul tuo PC.'],
-      ru: ['Мой мозг', 'Мой мозг — это модель ИИ, которой я думаю: локальная в Ollama, облачный провайдер с твоим ключом или ИИ-приложение, которым ты уже пользуешься. Выбери в Настройки > ИИ и модели; Benchmark покажет, какая быстрее на твоём ПК.'],
+      ru: ['Мой мозг', 'Мой мозг — это модель ИИ, которой я думаю: локальная в Ollama, облачный провайдер с твоим ключом или ИИ-приложение, которым ты уже пользуешься. Выбери в Настройки > ИИ и модели; Бенчмарк покажет, какая быстрее на твоём ПК.'],
       ja: ['私の頭脳', '頭脳は私が考えるためのAIモデルだよ。Ollamaのローカルモデル、キーを使うクラウド、またはいつも使ってるAIアプリ。設定 > AIとモデルで選んでね。ベンチマークでPCに一番速いものがわかるよ。'],
       ko: ['내 두뇌', '내 두뇌는 내가 생각할 때 쓰는 AI 모델이야. Ollama의 로컬 모델, 네 키를 쓰는 클라우드, 또는 이미 쓰는 AI 앱이 있어. 설정 > AI 및 모델에서 고르고, 벤치마크로 네 PC에서 제일 빠른 걸 확인해.'],
       zh: ['我的大脑', '我的大脑就是我用来思考的 AI 模型：Ollama 里的本地模型、用你的密钥的云服务，或你已经在用的 AI 应用。在设置 > AI 与模型里选择；基准测试会告诉你哪个在你电脑上最快。']
@@ -551,7 +579,8 @@ export const CAPABILITIES: Capability[] = [
     id: 'bug-report',
     category: 'app',
     say: {},
-    keywords: ['bug report', 'report a bug', 'report a problem', 'report an issue', 'your logs', 'logs', 'crash', 'reportar un bug', 'reportar un problema', 'reporte de bug', 'tus logs', 'reportar um bug', 'relatorio de bug', 'signaler un bug', 'rapport de bug', 'fehler melden', 'fehlerbericht', 'segnalare un bug', 'segnalazione', 'сообщить об ошибке', 'отчёт об ошибке', 'логи', 'バグ報告', 'バグレポート', 'ログ', '버그 신고', '버그 리포트', '로그', '报告错误', '错误报告', '日志'],
+    keywords: ['bug report', 'report a bug', 'report a problem', 'report an issue', 'reportar un bug', 'reportar un problema', 'reporte de bug', 'relatorio de bug', 'signaler un bug', 'rapport de bug', 'fehlerbericht', 'segnalare un bug', 'отчёт об ошибке', 'バグレポート', '버그 리포트', '错误报告'],
+    generic: ['your logs', 'logs', 'crash', 'tus logs', 'reportar um bug', 'fehler melden', 'segnalazione', 'сообщить об ошибке', 'логи', 'バグ報告', 'ログ', '버그 신고', '로그', '报告错误', '日志'],
     text: {
       en: ['Report a problem', 'If something breaks, open Settings and press "Copy bug report": it copies my logs and your system info (no keys) so you can paste them in a GitHub issue or send them to the developer. Settings > Logs shows everything live.'],
       es: ['Reportar un problema', 'Si algo falla, abrí Configuración y apretá "Copiar reporte de bug": copia mis logs y la info de tu sistema (sin keys) para que lo pegues en un issue de GitHub o se lo mandes al desarrollador. Configuración > Logs muestra todo en vivo.'],
@@ -567,9 +596,10 @@ export const CAPABILITIES: Capability[] = [
   }
 ]
 
-/** "Control+Alt+M" -> "Ctrl+Alt+M", arrows as arrows */
-export function prettyHotkey(accelerator: string): string {
-  const names: Record<string, string> = { Control: 'Ctrl', Super: 'Win', Up: '↑', Down: '↓', Left: '←', Right: '→', Return: 'Enter' }
+/** "Control+Alt+M" -> "Ctrl+Alt+M", arrows as arrows; on a Mac, Super is Cmd and Alt is Option */
+export function prettyHotkey(accelerator: string, platform = 'win32'): string {
+  const mac = platform === 'darwin'
+  const names: Record<string, string> = { Control: 'Ctrl', Super: mac ? 'Cmd' : 'Win', Alt: mac ? 'Option' : 'Alt', Up: '↑', Down: '↓', Left: '←', Right: '→', Return: 'Enter' }
   return accelerator
     .split('+')
     .map((part) => names[part] ?? part)
@@ -579,12 +609,12 @@ export function prettyHotkey(accelerator: string): string {
 const quote = (lang: HelpLang, phrase: string): string => (lang === 'ja' ? `「${phrase}」` : lang === 'zh' ? `“${phrase}”` : `"${phrase}"`)
 
 /** The capability's how-to text in a language, with its examples and the user's keys filled in */
-export function capabilityHowTo(cap: Capability, lang: HelpLang, hotkeys: Partial<Record<HotkeyAction, string>> = {}): string {
+export function capabilityHowTo(cap: Capability, lang: HelpLang, hotkeys: Partial<Record<HotkeyAction, string>> = {}, platform = 'win32'): string {
   const say = cap.say[lang] ?? cap.say.en ?? []
   return cap.text[lang][1]
     .replace('{say}', say[0] ? quote(lang, say[0]) : '')
     .replace('{say2}', say[1] ? quote(lang, say[1]) : '')
-    .replace(/\{hotkey:(\w+)\}/g, (_m, action: HotkeyAction) => (hotkeys[action] ? prettyHotkey(hotkeys[action] as string) : action))
+    .replace(/\{hotkey:(\w+)\}/g, (_m, action: HotkeyAction) => (hotkeys[action] ? prettyHotkey(hotkeys[action] as string, platform) : action))
 }
 
 export const capabilityAvailable = (cap: Capability, platform: string): boolean => !cap.platforms || (cap.platforms as string[]).includes(platform)

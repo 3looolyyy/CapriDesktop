@@ -38,7 +38,7 @@ test('every capability is written in all ten languages, with nothing left unfill
     assert.ok(!ids.has(cap.id), `duplicate id ${cap.id}`)
     ids.add(cap.id)
     assert.ok(CATEGORY_TITLES[cap.category], `${cap.id}: unknown category`)
-    assert.ok(cap.keywords.length > 0, `${cap.id}: no keywords`)
+    assert.ok(cap.keywords.length + (cap.generic?.length ?? 0) > 0, `${cap.id}: no keywords`)
     for (const lang of HELP_LANGS) {
       const [title, how] = cap.text[lang] || []
       assert.ok(title && how, `${cap.id}: missing ${lang} text`)
@@ -107,7 +107,14 @@ test('"what can you do?" gives the tour in every language', () => {
 })
 
 test('commands and ordinary questions are not taken for help', () => {
-  for (const q of ['turn on gaming mode', 'quedate quieta', 'stay still', 'how do I fix this error in my code?', 'cómo se dice gato en inglés', 'how do I open a port on my router?', 'how do I stay motivated?', 'what is the weather like?', 'how do I make a pizza?', '¿cómo hago una pizza grande?']) {
+  for (const q of [
+    'turn on gaming mode', 'quedate quieta', 'stay still', 'how do I fix this error in my code?', 'cómo se dice gato en inglés', 'how do I open a port on my router?', 'how do I stay motivated?', 'what is the weather like?', 'how do I make a pizza?', '¿cómo hago una pizza grande?',
+    // Questions about other things that share a word with one of her features (the Dev Deck chat goes through here too)
+    'how do I update node?', 'how do I check the python version?', 'how do I build an app?', 'how do I hide a div?', 'how do I copy to the clipboard?', 'how do I install microsoft office?',
+    '这首歌怎么样？', 'как сделать больше денег', 'how do I write an excel macro?', 'how do I upload a video to youtube?', 'how do I draw a circle in css?', 'how do I change the language in python?',
+    'how do I read the logs in docker?', '¿cómo actualizo windows?', 'how do I scan a document?', 'how do I make music in fl studio?', 'how do I rank up in valorant?', 'how do I search a list in python?',
+    'how do I take a screenshot of my screen?', '¿cómo hago una app en react?', 'comment installer une appli ?', 'wie aktualisiere ich windows?', '怎么办？'
+  ]) {
     assert.equal(help.parseHelpRequest(q), null, `"${q}" was taken for a help question`)
   }
 })
@@ -115,6 +122,7 @@ test('commands and ordinary questions are not taken for help', () => {
 test('answers use the user\'s own keys and say when something is not on this system', () => {
   const gaming = CAPABILITIES.find((c) => c.id === 'gaming-mode')
   assert.match(help.helpAnswer({ kind: 'how', capability: gaming }, 'en', 'win32', { ...HOTKEYS, gaming: 'Control+Shift+G' }), /Ctrl\+Shift\+G/)
+  assert.match(help.helpAnswer({ kind: 'how', capability: gaming }, 'en', 'darwin', { ...HOTKEYS, gaming: 'Alt+Super+M' }), /Option\+Cmd\+M/)
   const draw = CAPABILITIES.find((c) => c.id === 'draw')
   assert.match(help.helpAnswer({ kind: 'how', capability: draw }, 'es', 'darwin', HOTKEYS), /todavía no funciona en este sistema/)
 })

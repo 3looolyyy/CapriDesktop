@@ -3,7 +3,6 @@ import './services/log-timestamps'
 import './services/log-capture'
 import { startMacDesktopMonitoring } from './services/mac-desktop'
 import './services/mac-bootstrap'
-import { captureWindowLogs, registerBugReportHandlers } from './services/bug-report'
 import { startScreenComments } from './services/screen-comment-service'
 import { isMac } from './services/platform'
 import { app, BrowserWindow, Menu } from 'electron'
@@ -27,6 +26,8 @@ import { isElevated, relaunchElevated } from './services/admin-mode'
 import { warmBrainApp } from './services/llm-gateway'
 import { closeAiAppSessions } from './services/ai-apps'
 import { closeScreenWorker } from './services/screen-worker'
+// Last, so the modules above load in the order they always did
+import { captureWindowLogs, registerBugReportHandlers } from './services/bug-report'
 
 // What her windows log goes to the bug report too
 captureWindowLogs()

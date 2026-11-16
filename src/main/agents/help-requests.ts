@@ -65,17 +65,33 @@ const HOW = list([
   'как мне', 'как сделать', 'как включить', 'как выключить', 'как заставить', 'как работает', 'что сказать', 'как можно',
   'どうやって', 'どうすれば', 'やり方', '方法', 'どうしたら',
   '어떻게', '방법',
-  '怎么', '如何', '怎样'
+  // Not 怎么 alone: 怎么样 is "what do you think of", 怎么了 "what happened", 怎么办 "what to do"
+  '怎么让', '怎么打开', '怎么开', '怎么关', '怎么用', '怎么把', '怎么设置', '怎么才能', '怎么弄', '怎么做', '怎么换', '怎么切换', '怎么叫', '如何', '怎样才能', '怎样让'
 ])
+
+/** The question is about her: "you", "te", "du", "你"... (generic keywords need this) */
+const ABOUT_HER = list([
+  'you', 'your', 'yourself', 'capri', 'she', 'her',
+  'te', 'vos', 'tu', 'tus', 'ti', 'contigo',
+  'voce', 'seu', 'sua',
+  'toi', 'ton', 'ta', 'tes',
+  'du', 'dich', 'dir', 'dein', 'deine', 'deinen',
+  'tuo', 'tua',
+  'ты', 'тебя', 'тебе', 'твой', 'твоя', 'твои', 'тобой', 'капри',
+  'あなた', '君', 'カプリ', 'させ', 'てもらう', 'もらえ',
+  '너를', '너한테', '너는', '너가', '네가', '카프리',
+  '你', '她'
+])
+const isAboutHer = (text: string): boolean => ABOUT_HER.some((w) => has(text, w))
 /** "Can you...?": a question the model answers, with the manual at hand */
 const CAN_YOU = list([
   'can you', 'are you able', 'do you know how', 'could you', 'is it possible', 'do you support',
   'podes', 'puedes', 'sabes', 'se puede', 'voce pode', 'voce consegue', 'peux tu', 'sais tu', 'kannst du', 'puoi', 'sai', 'можешь', 'умеешь', 'できる', '할 수 있', '能不能', '会不会', '你能', '你会'
 ])
 
-function score(text: string, cap: Capability): number {
+function score(text: string, cap: Capability, aboutHer: boolean): number {
   let total = 0
-  for (const keyword of cap.keywords) {
+  for (const keyword of aboutHer ? [...cap.keywords, ...(cap.generic ?? [])] : cap.keywords) {
     const k = plain(keyword)
     if (k && hasPrefix(text, k)) total += k.length
   }
@@ -85,7 +101,8 @@ function score(text: string, cap: Capability): number {
 /** The catalog entries a question is about, best first */
 export function matchCapabilities(text: string, limit = 3): Capability[] {
   const t = plain(text)
-  return CAPABILITIES.map((cap) => ({ cap, s: score(t, cap) }))
+  const aboutHer = isAboutHer(t)
+  return CAPABILITIES.map((cap) => ({ cap, s: score(t, cap, aboutHer) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s)
     .slice(0, limit)
@@ -98,7 +115,8 @@ export function parseHelpRequest(text: string): HelpRequest | null {
   if (!t || t.length > 160) return null
   if (HELP_ALONE.includes(t) || WHAT_CAN_YOU_DO.some((p) => has(t, p))) return { kind: 'tour' }
   if (!HOW.some((p) => has(t, p))) return null
-  const [best] = matchCapabilities(t, 1)
+  // Her name counts as being about her, so it's matched on the text that still has it
+  const [best] = matchCapabilities(isAboutHer(plain(text)) && !isAboutHer(t) ? `${t} capri` : t, 1)
   return best ? { kind: 'how', capability: best } : null
 }
 
@@ -148,7 +166,7 @@ export function helpAnswer(request: HelpRequest, language: string, platform: str
   const lang = asHelpLang(language)
   if (request.kind === 'how') {
     const cap = request.capability
-    const how = capabilityHowTo(cap, lang, hotkeys)
+    const how = capabilityHowTo(cap, lang, hotkeys, platform)
     return capabilityAvailable(cap, platform) ? `[cheerful] ${how}` : `[cheerful] ${how} ${NOT_ON_THIS_SYSTEM[lang]}`
   }
   const separator = lang === 'ja' || lang === 'zh' ? '、' : ', '
@@ -173,7 +191,7 @@ export function capabilityManual(text: string, platform: string, hotkeys: Partia
   if (!caps.length) return null
   const entries = caps.map((cap) => {
     const where = capabilityAvailable(cap, platform) ? '' : ' (NOT available on this system)'
-    return `- ${cap.text.en[0]}${where}: ${capabilityHowTo(cap, 'en', hotkeys)}`
+    return `- ${cap.text.en[0]}${where}: ${capabilityHowTo(cap, 'en', hotkeys, platform)}`
   })
   return `CAPRI MANUAL (facts about your own features; use them if the user is asking how to use you, keep the commands exactly as written, and never invent features that aren't here):\n${entries.join('\n')}`
 }
