@@ -1,7 +1,7 @@
 import { agentManager } from '../agents/agent-manager'
 import { consciousnessService } from './consciousness-service'
 import { getLlmSettings, isCloudMode, cloudVisionModel, describeCloudImage, llmFetch } from './llm-gateway'
-import { describeLocalImage } from './local-vision'
+import { describeLocalImage, VISION_NUM_CTX } from './local-vision'
 import { localAIEnabled } from './local-ai-policy'
 import { ollamaService } from './ollama-service'
 import { scannerService } from './scanner-service'
@@ -52,7 +52,7 @@ class BenchmarkService {
       case 'voice':
         return this.voice(req.index ?? 0)
       case 'vision':
-        return this.vision()
+        return this.vision(req.index ?? 0)
       default:
         return { success: false, error: 'Unknown test' }
     }
@@ -123,7 +123,7 @@ class BenchmarkService {
     return { success: true, ms, engine: provider, detail: `${phrase.length} chars` }
   }
 
-  private async vision(): Promise<BenchmarkResult> {
+  private async vision(index: number): Promise<BenchmarkResult> {
     const mode = scannerVisionMode(process.platform, isCloudMode(), localAIEnabled())
     if (mode === 'disabled') return { success: false, error: 'Local AI is disabled in the settings.' }
 
@@ -131,10 +131,24 @@ class BenchmarkService {
     if (mode !== 'cloud') {
       const local = await ollamaService.ensureRunning(true)
       if (!local.running) return { success: false, error: 'Ollama is not running.' }
-      model = (await scannerService.detectVisionModel()) || ''
+      // Ollama does the vision here even with a cloud brain saved, so it needs an installed local model
+      model = (await scannerService.detectVisionModel(true)) || ''
       if (!model) return { success: false, error: 'No vision model is installed.' }
     } else if (!model) {
       return { success: false, error: 'Choose a Vision model in the model settings first.' }
+    }
+
+    // Warmup only loads the local model; a cloud model has nothing to load, so no paid call is spent on it
+    if (index < 0) {
+      if (mode === 'cloud') return { success: true, engine: model }
+      const response = await fetch('http://127.0.0.1:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, keep_alive: '5m', options: { num_ctx: VISION_NUM_CTX } }),
+        signal: AbortSignal.timeout(180000)
+      })
+      if (!response.ok) return { success: false, error: `Ollama could not load ${model} (HTTP ${response.status}).` }
+      return { success: true, engine: model }
     }
 
     const startedAt = performance.now()
