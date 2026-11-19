@@ -215,7 +215,8 @@ export interface IElectronAPI {
   }
   setup: {
     getStatus: () => Promise<SetupStatus>
-    run: (step: 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona' | 'whisper' | 'vision' | 'qwen3tts') => Promise<{ ok: boolean; status: SetupStatus }>
+    run: (step: 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona' | 'whisper' | 'vision' | 'qwen3tts', options?: { qwen?: Partial<QwenTtsConfig> }) => Promise<{ ok: boolean; status: SetupStatus }>
+    qwenStatus: (qwen?: Partial<QwenTtsConfig>) => Promise<{ ready: boolean; reason: string }>
     onLog: (callback: (entry: { step: string; line: string }) => void) => () => void
     finish: () => Promise<boolean>
     open: () => Promise<boolean>

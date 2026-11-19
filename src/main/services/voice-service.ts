@@ -54,6 +54,15 @@ export interface SynthesizeResult {
   fallback?: boolean
 }
 
+type TtsResult = { success: boolean; error?: string; fallback?: boolean; path?: string }
+interface TtsJob {
+  id: string
+  key: string
+  payload: { op?: string; text: string; lang?: string; out: string; fresh?: boolean; cfg?: Record<string, unknown>; description?: string }
+  resolve: (res: TtsResult) => void
+  timer?: NodeJS.Timeout
+}
+
 export class VoiceService {
   private static instance: VoiceService
   private sttWorker: ChildProcess | null = null
@@ -71,9 +80,13 @@ export class VoiceService {
   private audioCache: Map<string, string> = new Map()
   private prewarming = false
   private ttsWorker: ChildProcess | null = null
-  private ttsPending: Map<string, { resolve: (res: { success: boolean; error?: string; fallback?: boolean }) => void; timer: NodeJS.Timeout }> = new Map()
+  /** The worker answers one line at a time: one request is with it, the rest wait here */
+  private ttsActive: TtsJob | null = null
+  private ttsQueue: TtsJob[] = []
   private ttsCounter = 0
   private ttsLoadedKey = ''
+  /** Where the model runs (cuda:0, mps, cpu), as the worker last said */
+  private ttsDevice = ''
   private ttsIdleTimer: NodeJS.Timeout | null = null
   private ttsLineBuffer = ''
 
@@ -117,6 +130,7 @@ export class VoiceService {
     const worker = this.ttsWorker
     this.ttsWorker = null
     this.ttsLoadedKey = ''
+    this.ttsDevice = ''
     if (worker) {
       try {
         worker.kill()
@@ -125,12 +139,15 @@ export class VoiceService {
     this.drainTtsQueue('Qwen3-TTS worker stopped')
   }
 
+  /** Fails the request in the worker and every one waiting for it */
   private drainTtsQueue(error: string): void {
-    for (const req of this.ttsPending.values()) {
-      clearTimeout(req.timer)
-      req.resolve({ success: false, error })
+    const jobs = [...(this.ttsActive ? [this.ttsActive] : []), ...this.ttsQueue]
+    this.ttsActive = null
+    this.ttsQueue = []
+    for (const job of jobs) {
+      if (job.timer) clearTimeout(job.timer)
+      job.resolve({ success: false, error })
     }
-    this.ttsPending.clear()
   }
 
   private ensureTtsWorker(): boolean {
@@ -143,7 +160,9 @@ export class VoiceService {
       })
       this.ttsWorker = worker
       this.ttsLineBuffer = ''
-      worker.stdin?.on('error', (err) => this.drainTtsQueue(err.message))
+      worker.stdin?.on('error', (err) => {
+        if (this.ttsWorker === worker) this.drainTtsQueue(err.message)
+      })
       worker.stdout?.on('data', (chunk) => {
         this.ttsLineBuffer += chunk.toString()
         const lines = this.ttsLineBuffer.split('\n')
@@ -154,11 +173,14 @@ export class VoiceService {
           try {
             const parsed = JSON.parse(trimmed)
             if (parsed.ready !== undefined) continue
-            const req = parsed.id ? this.ttsPending.get(parsed.id) : undefined
-            if (req) {
-              this.ttsPending.delete(parsed.id)
-              clearTimeout(req.timer)
-              req.resolve(parsed)
+            if (typeof parsed.device === 'string') this.ttsDevice = parsed.device
+            const job = this.ttsActive
+            if (job && parsed.id === job.id) {
+              this.ttsActive = null
+              if (job.timer) clearTimeout(job.timer)
+              if (parsed.success) this.ttsLoadedKey = job.key
+              job.resolve(parsed)
+              this.pumpTtsQueue()
             }
           } catch {
             console.warn('[VoiceService TTS Worker] Unparseable line:', trimmed)
@@ -171,13 +193,14 @@ export class VoiceService {
       })
       worker.on('error', (err) => {
         console.error('[VoiceService TTS Worker Error]', err)
-        this.drainTtsQueue(err.message)
+        if (this.ttsWorker === worker) this.drainTtsQueue(err.message)
       })
       worker.on('close', (code) => {
         console.warn(`[VoiceService TTS Worker] Process closed with code ${code}`)
         if (this.ttsWorker !== worker) return
         this.ttsWorker = null
         this.ttsLoadedKey = ''
+        this.ttsDevice = ''
         this.drainTtsQueue(`TTS worker closed with code ${code}`)
       })
       return true
@@ -192,35 +215,55 @@ export class VoiceService {
     return `${cfg.mode}|${effectiveQwenSize(cfg)}`
   }
 
-  private requestTts(
-    payload: { op?: string; text: string; lang?: string; out: string; fresh?: boolean; cfg?: Record<string, unknown>; description?: string },
-    key: string
-  ): Promise<{ success: boolean; error?: string; fallback?: boolean; path?: string }> {
-    if (!this.ensureTtsWorker() || !this.ttsWorker?.stdin) return Promise.resolve({ success: false, error: 'Qwen3-TTS worker could not start' })
-    const id = `tts_${++this.ttsCounter}_${Date.now()}`
-    const waitMs = this.ttsLoadedKey === key ? 60_000 : 300_000
+  private requestTts(payload: TtsJob['payload'], key: string): Promise<TtsResult> {
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        this.ttsPending.delete(id)
-        this.stopTtsWorker()
-        resolve({ success: false, error: `Qwen3-TTS timeout (${waitMs}ms)` })
-      }, waitMs)
-      this.ttsPending.set(id, {
-        resolve: (res) => {
-          if (res.success) this.ttsLoadedKey = key
-          resolve(res)
-        },
-        timer
-      })
-      this.ttsWorker!.stdin!.write(JSON.stringify({ id, op: payload.op, text: payload.text, out: payload.out, lang: payload.lang, noCache: payload.fresh, cfg: payload.cfg, description: payload.description }) + '\n')
+      this.ttsQueue.push({ id: `tts_${++this.ttsCounter}_${Date.now()}`, key, payload, resolve })
+      this.pumpTtsQueue()
     })
+  }
+
+  /** Sends the next waiting request once the worker is free. Its time limit starts here, not when it was asked for */
+  private pumpTtsQueue(): void {
+    if (this.ttsActive) return
+    const job = this.ttsQueue.shift()
+    if (!job) return
+    if (!this.ensureTtsWorker() || !this.ttsWorker?.stdin) {
+      job.resolve({ success: false, error: 'Qwen3-TTS worker could not start' })
+      return this.pumpTtsQueue()
+    }
+    // A model that has to load, or one running on the CPU, takes far longer than a loaded one on CUDA
+    const waitMs = this.ttsLoadedKey === job.key && this.ttsDevice.startsWith('cuda') ? 60_000 : this.ttsLoadedKey === job.key ? 240_000 : 300_000
+    this.ttsActive = job
+    job.timer = setTimeout(() => {
+      if (this.ttsActive !== job) return
+      this.ttsActive = null
+      // The worker is stuck: restart it, but the lines still waiting get a fresh worker instead of failing
+      const stuck = this.ttsWorker
+      this.ttsWorker = null
+      this.ttsLoadedKey = ''
+      this.ttsDevice = ''
+      try {
+        stuck?.kill()
+      } catch {}
+      job.resolve({ success: false, error: `Qwen3-TTS timeout (${waitMs}ms)` })
+      this.pumpTtsQueue()
+    }, waitMs)
+    const { payload } = job
+    this.ttsWorker.stdin.write(JSON.stringify({ id: job.id, op: payload.op, text: payload.text, out: payload.out, lang: payload.lang, noCache: payload.fresh, cfg: payload.cfg, description: payload.description }) + '\n')
   }
 
   /** Stops the model after a while when a preview used a voice that is not saved */
   private stopTtsWhenIdle(): void {
     if (this.ttsIdleTimer) clearTimeout(this.ttsIdleTimer)
     this.ttsIdleTimer = setTimeout(() => {
-      if (!this.isQwenActive()) this.stopTtsWorker()
+      // Something is still being spoken: look again later instead of cutting it off
+      if (this.ttsActive || this.ttsQueue.length) return this.stopTtsWhenIdle()
+      if (!this.isQwenActive()) return this.stopTtsWorker()
+      // Qwen is the saved voice, but a preview may have left another mode or size loaded
+      if (this.ttsLoadedKey !== this.qwenKey(normalizeQwenConfig(this.getConfig()?.qwen3_tts))) {
+        this.stopTtsWorker()
+        this.warmQwen()
+      }
     }, 120_000)
   }
 
@@ -722,6 +765,8 @@ export class VoiceService {
           if (preview) this.stopTtsWhenIdle()
           if (res.success) return void finish(0, JSON.stringify(res), '')
           if (preview) return resolve({ success: false, error: res.error || 'Qwen3-TTS failed' })
+          // Quitting stops the worker on purpose: no new process for the fallback voice
+          if ((app as unknown as { isQuitting?: boolean }).isQuitting) return resolve({ success: false, error: 'Capri is closing' })
           console.warn('[VoiceService] Qwen3-TTS did not answer, using the fallback voice:', res.error)
           runOneShot()
         })

@@ -135,7 +135,9 @@ def apply_audio_filter(raw_path: str, out_path: str, synth_preset: str = "cyber_
 
     pitch_filter = ""
     if abs(pitch_mult - 1.0) >= 0.01:
-        pitch_filter = f"asetrate=44100*{pitch_mult:.3f},aresample=44100,atempo={1.0/pitch_mult:.3f},"
+        # Resample to 44.1 kHz first: asetrate assumes 44.1 kHz input, but local engines
+        # (Qwen3-TTS writes 24 kHz) would otherwise play too fast and too high.
+        pitch_filter = f"aresample=44100,asetrate=44100*{pitch_mult:.3f},aresample=44100,atempo={1.0/pitch_mult:.3f},"
 
     if preset == "none" or (preset not in SYNTH_FILTERS and preset != "ringmod"):
         if pitch_filter:
@@ -1126,7 +1128,67 @@ def run_tts_worker():
             res = {"success": False, "error": str(e)}
         if req_id is not None:
             res["id"] = req_id
+        if _qwen_state.get("device"):
+            res["device"] = _qwen_state["device"]
         print(json.dumps(res), flush=True)
+
+
+QWEN_PENDING_MARK = ".capri-download-pending"
+
+
+def qwen_repo_dir(repo: str) -> str:
+    from huggingface_hub import constants
+    return os.path.join(constants.HF_HUB_CACHE, "models--" + repo.replace("/", "--"))
+
+
+def qwen_snapshot_problem(snap: str) -> str:
+    """Why a downloaded snapshot cannot be used, or an empty string when it looks complete."""
+    if not os.path.isdir(snap):
+        return "snapshot folder missing"
+    blobs = os.path.join(os.path.dirname(os.path.dirname(snap)), "blobs")
+    if os.path.isdir(blobs) and any(n.endswith(".incomplete") for n in os.listdir(blobs)):
+        return "download unfinished"
+    weights = 0
+    for root, _dirs, files in os.walk(snap):
+        for name in files:
+            if not os.path.exists(os.path.join(root, name)):  # a link whose file never arrived
+                return f"{name} is missing"
+            if name.endswith((".safetensors", ".bin")):
+                weights += 1
+    if not os.path.exists(os.path.join(snap, "config.json")):
+        return "config.json is missing"
+    if not weights:
+        return "no model weights"
+    index = os.path.join(snap, "model.safetensors.index.json")
+    if os.path.exists(index):
+        try:
+            with open(index, "r", encoding="utf-8") as f:
+                shards = set(json.load(f).get("weight_map", {}).values())
+        except Exception:
+            return "weights index unreadable"
+        for shard in shards:
+            if not os.path.exists(os.path.join(snap, shard)):
+                return f"{shard} is missing"
+    return ""
+
+
+def check_qwen(mode: str, size: str):
+    """Offline: is this model fully on disk? Prints {"ready": bool, "reason": str}."""
+    from huggingface_hub import snapshot_download
+
+    mode = mode if mode in ("custom", "clone", "design") else "custom"
+    size = "1.7B" if mode == "design" or size == "1.7B" else "0.6B"
+    repo = QWEN_TTS_REPOS[(mode, size)]
+    reason = ""
+    if os.path.exists(os.path.join(qwen_repo_dir(repo), QWEN_PENDING_MARK)):
+        reason = "download unfinished"
+    else:
+        try:
+            snap = snapshot_download(repo, local_files_only=True)
+            reason = qwen_snapshot_problem(snap)
+        except Exception:
+            reason = "not downloaded"
+    print(json.dumps({"ready": not reason, "reason": reason, "mode": mode, "size": size}), flush=True)
 
 
 def prepare_qwen(mode: str, size: str):
@@ -1136,7 +1198,18 @@ def prepare_qwen(mode: str, size: str):
 
     mode = mode if mode in ("custom", "clone", "design") else "custom"
     size = "1.7B" if mode == "design" or size == "1.7B" else "0.6B"
-    path = snapshot_download(QWEN_TTS_REPOS[(mode, size)])
+    repo = QWEN_TTS_REPOS[(mode, size)]
+    # Left behind if the download stops half way, so the app knows the folder is not usable yet
+    repo_dir = qwen_repo_dir(repo)
+    os.makedirs(repo_dir, exist_ok=True)
+    pending = os.path.join(repo_dir, QWEN_PENDING_MARK)
+    with open(pending, "w", encoding="utf-8") as f:
+        f.write("downloading")
+    path = snapshot_download(repo)
+    problem = qwen_snapshot_problem(path)
+    if problem:
+        raise RuntimeError(f"The Qwen3-TTS download is incomplete: {problem}")
+    os.remove(pending)
     print(json.dumps({"ready": True, "mode": mode, "size": size, "path": path}), flush=True)
 
 
@@ -1165,6 +1238,9 @@ def main():
     qwen_parser = subparsers.add_parser("prepare-qwen")
     qwen_parser.add_argument("--size", default="0.6B", choices=["0.6B", "1.7B"])
     qwen_parser.add_argument("--mode", default="custom", choices=["custom", "clone", "design"])
+    check_parser = subparsers.add_parser("check-qwen")
+    check_parser.add_argument("--size", default="0.6B", choices=["0.6B", "1.7B"])
+    check_parser.add_argument("--mode", default="custom", choices=["custom", "clone", "design"])
 
     args = parser.parse_args()
 
@@ -1180,6 +1256,8 @@ def main():
         run_tts_worker()
     elif args.command == "prepare-qwen":
         prepare_qwen(args.mode, args.size)
+    elif args.command == "check-qwen":
+        check_qwen(args.mode, args.size)
     elif args.command == "stt-worker":
         run_stt_worker(getattr(args, 'model', None))
     else:

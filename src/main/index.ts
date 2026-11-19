@@ -196,5 +196,7 @@ if (!gotTheLock) {
     ollamaService.stop()
     closeAiAppSessions()
     closeScreenWorker()
+    // The voice workers (Whisper and Qwen3-TTS) would keep their models, and the GPU memory, after the app closes
+    voiceService.stopServer()
   })
 }

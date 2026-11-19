@@ -69,6 +69,7 @@ export const IPC_CHANNELS = {
   COMPANION_USER_NAME_CHANGED: 'companion:userNameChanged',
   SETUP_STATUS: 'setup:status',
   SETUP_RUN: 'setup:run',
+  SETUP_QWEN_STATUS: 'setup:qwenStatus',
   SETUP_LOG: 'setup:log',
   ONBOARDING_FINISH: 'onboarding:finish',
   ONBOARDING_OPEN: 'onboarding:open',

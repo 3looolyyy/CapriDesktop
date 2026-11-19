@@ -703,7 +703,6 @@ export const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({ isOpen, 
             <QwenTtsPanel
               value={qwen}
               onChange={(patch) => setQwen((prev) => ({ ...prev, ...patch }))}
-              saveConfig={() => window.api.voice.setConfig(buildConfigPayload())}
               phrase={testPhrase || t('vs_testPhrase')}
               onStatus={setStatusMessage}
             />

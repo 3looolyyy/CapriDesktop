@@ -331,11 +331,17 @@ export function registerIpcHandlers(): void {
   // First-run setup (onboarding window)
   ipcMain.handle(IPC_CHANNELS.SETUP_STATUS, () => setupService.getStatus())
 
-  ipcMain.handle(IPC_CHANNELS.SETUP_RUN, async (_event, step: SetupStep) => {
+  // Only the model chosen in the panel travels along: the install never saves or activates anything
+  const qwenChoice = (raw: unknown): Partial<QwenTtsConfig> | undefined =>
+    raw && typeof raw === 'object' ? { mode: (raw as QwenTtsConfig).mode, model_size: (raw as QwenTtsConfig).model_size } : undefined
+
+  ipcMain.handle(IPC_CHANNELS.SETUP_RUN, async (_event, step: SetupStep, options?: { qwen?: Partial<QwenTtsConfig> }) => {
     if (!['python','ffmpeg','ollama','model','persona','whisper','vision','qwen3tts'].includes(step)) throw new Error('Unknown setup step')
-    const ok = await setupService.run(step, (s, line) => windowManager.broadcast(IPC_CHANNELS.SETUP_LOG, { step: s, line }))
+    const ok = await setupService.run(step, (s, line) => windowManager.broadcast(IPC_CHANNELS.SETUP_LOG, { step: s, line }), { qwen: qwenChoice(options?.qwen) })
     return { ok, status: await setupService.getStatus() }
   })
+
+  ipcMain.handle(IPC_CHANNELS.SETUP_QWEN_STATUS, (_event, qwen?: Partial<QwenTtsConfig>) => setupService.qwenStatus(qwenChoice(qwen)))
 
   ipcMain.handle(IPC_CHANNELS.DISPLAYS_LIST, () => windowManager.listDisplays())
   ipcMain.handle(IPC_CHANNELS.DISPLAYS_MOVE, (_event, id: number) => windowManager.moveCompanionToDisplay(id))

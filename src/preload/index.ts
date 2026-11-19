@@ -413,7 +413,8 @@ const api = {
   // System Utilities & Project Files
   setup: {
     getStatus: (): Promise<any> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_STATUS),
-    run: (step: string): Promise<{ ok: boolean; status: any }> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_RUN, step),
+    run: (step: string, options?: { qwen?: Partial<QwenTtsConfig> }): Promise<{ ok: boolean; status: any }> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_RUN, step, options),
+    qwenStatus: (qwen?: Partial<QwenTtsConfig>): Promise<{ ready: boolean; reason: string }> => ipcRenderer.invoke(IPC_CHANNELS.SETUP_QWEN_STATUS, qwen),
     onLog: (callback: (entry: { step: string; line: string }) => void): (() => void) => {
       const sub = (_e: IpcRendererEvent, entry: { step: string; line: string }): void => callback(entry)
       ipcRenderer.on(IPC_CHANNELS.SETUP_LOG, sub)

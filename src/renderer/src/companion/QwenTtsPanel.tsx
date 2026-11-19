@@ -6,7 +6,6 @@ import { useT } from '../utils/useUiLang'
 interface Props {
   value: QwenTtsConfig
   onChange: (patch: Partial<QwenTtsConfig>) => void
-  saveConfig: () => Promise<unknown>
   phrase: string
   onStatus: (message: string) => void
 }
@@ -20,9 +19,11 @@ const MODES: { id: QwenMode; key: 'vs_qwenModeCustom' | 'vs_qwenModeClone' | 'vs
 const FIELD = 'w-full bg-[#1f0e0e] border border-cyan-500/40 rounded-none px-3 py-2 text-white outline-none focus:border-cyan-400 placeholder:text-stone-600 disabled:opacity-40'
 const BUTTON = 'px-3 py-2 rounded-none font-bold flex items-center gap-2 text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40'
 
-export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, saveConfig, phrase, onStatus }) => {
+export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, phrase, onStatus }) => {
   const t = useT()
-  const [installed, setInstalled] = useState(true)
+  // Not installed until the check says so: the download button must stay reachable when it cannot answer
+  const [installed, setInstalled] = useState(false)
+  const [checking, setChecking] = useState(true)
   const [installing, setInstalling] = useState(false)
   const [installLog, setInstallLog] = useState('')
   const [playing, setPlaying] = useState('')
@@ -30,29 +31,51 @@ export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, saveConfig, phr
   const [error, setError] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cancelRef = useRef(false)
+  // Settles the promise of the sample being played: pause() fires neither "ended" nor "error"
+  const playDoneRef = useRef<(() => void) | null>(null)
+  const checkRef = useRef(0)
+  // The check that ends an install must ask about what is selected now, not when it started
+  const valueRef = useRef(value)
+  valueRef.current = value
 
   const folder = qwenModelFolder(value)
 
+  // Ready means the Python packages import and the whole model is on disk, not just that its folder exists
   const refreshInstalled = (): void => {
-    window.api.agent
-      .listInstalledParts()
-      .then((parts) => setInstalled(!!parts.find((p) => p.id === 'qwen3tts')?.paths.some((p) => p.includes(`models--Qwen--${folder}`))))
-      .catch(() => {})
+    const check = ++checkRef.current
+    setChecking(true)
+    window.api.setup
+      .qwenStatus({ mode: valueRef.current.mode, model_size: valueRef.current.model_size })
+      .then((status) => {
+        if (check === checkRef.current) setInstalled(!!status.ready)
+      })
+      .catch(() => {
+        if (check === checkRef.current) setInstalled(false)
+      })
+      .finally(() => {
+        if (check === checkRef.current) setChecking(false)
+      })
   }
   useEffect(refreshInstalled, [folder])
+
+  const stopAudio = (): void => {
+    audioRef.current?.pause()
+    audioRef.current = null
+    playDoneRef.current?.()
+  }
 
   useEffect(
     () => () => {
       cancelRef.current = true
-      audioRef.current?.pause()
+      checkRef.current++
+      stopAudio()
     },
     []
   )
 
   const stop = (): void => {
     cancelRef.current = true
-    audioRef.current?.pause()
-    audioRef.current = null
+    stopAudio()
     setPlaying('')
   }
 
@@ -60,9 +83,14 @@ export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, saveConfig, phr
     new Promise((resolve) => {
       const audio = new Audio(url)
       audioRef.current = audio
-      audio.onended = () => resolve()
-      audio.onerror = () => resolve()
-      audio.play().catch(() => resolve())
+      const done = (): void => {
+        if (playDoneRef.current === done) playDoneRef.current = null
+        resolve()
+      }
+      playDoneRef.current = done
+      audio.onended = done
+      audio.onerror = done
+      audio.play().catch(done)
     })
 
   const speak = async (patch: Partial<QwenTtsConfig>, label: string): Promise<boolean> => {
@@ -100,14 +128,14 @@ export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, saveConfig, phr
 
   const install = async (): Promise<void> => {
     if (installing) return
-    await saveConfig()
+    // Installs what is selected here. Nothing is saved or switched to Qwen: that waits for Save
     setInstalling(true)
     setInstallLog('')
     const off = window.api.setup.onLog((entry) => {
       if (entry.step === 'qwen3tts') setInstallLog(entry.line.slice(0, 160))
     })
     try {
-      const res = await window.api.setup.run('qwen3tts')
+      const res = await window.api.setup.run('qwen3tts', { qwen: { mode: value.mode, model_size: value.model_size } })
       onStatus(res.ok ? t('vs_qwenInstalled') : t('vs_qwenInstallFail'))
     } catch {
       onStatus(t('vs_qwenInstallFail'))
@@ -273,7 +301,7 @@ export const QwenTtsPanel: React.FC<Props> = ({ value, onChange, saveConfig, phr
       {error && <p className="text-[13px] text-red-400 break-words">{error}</p>}
       <p className="text-[13px] text-stone-400">{t('vs_qwenNote')}</p>
 
-      {!installed && (
+      {!installed && !checking && (
         <div className="space-y-1.5">
           <button type="button" onClick={install} disabled={installing} className={`${BUTTON} bg-cyan-400 hover:bg-cyan-300 text-black`}>
             {installing ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
