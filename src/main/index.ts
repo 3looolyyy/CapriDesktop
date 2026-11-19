@@ -158,6 +158,9 @@ if (!gotTheLock) {
     try {
       voiceService.ensureWorker()
     } catch {}
+    try {
+      voiceService.warmQwen()
+    } catch {}
 
     // Auto-start Ollama in background if installed and not yet running
     ollamaService.ensureRunning().catch((err) => {

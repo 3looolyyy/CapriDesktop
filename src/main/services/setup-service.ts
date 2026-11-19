@@ -20,13 +20,14 @@ import { findOnPath, isMac, isWindows, killProcesses, linuxInstallCommand, linux
 import { ollamaService } from './ollama-service'
 import { voiceService } from './voice-service'
 import { createHash } from 'crypto'
+import { effectiveQwenSize, normalizeQwenConfig, qwenDownloadSize } from '../../shared/qwen-tts'
 import { consciousnessService } from './consciousness-service'
 import { isCloudMode } from './llm-gateway'
 import { windowManager } from '../windows/window-manager'
 import { localizeLine } from '../../shared/lines'
 import { getUserName } from './user-profile'
 
-export type SetupStep = 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona' | 'whisper' | 'vision'
+export type SetupStep = 'python' | 'ffmpeg' | 'ollama' | 'model' | 'persona' | 'whisper' | 'vision' | 'qwen3tts'
 
 export interface SetupStatus {
   python: { systemPython: string | null; envReady: boolean }
@@ -635,6 +636,8 @@ export class SetupService {
           if(ok) voiceService.restartWorker()
           return ok
         }
+        case 'qwen3tts':
+          return await this.installQwenTts(log)
         case 'python': {
           const ok = await this.installVoiceEnv(log)
           // It may have started before Whisper was here, and it wouldn't notice on its own
@@ -684,6 +687,37 @@ export class SetupService {
     } finally {
       this.busy = false
     }
+  }
+
+  private async installQwenTts(log: Logger): Promise<boolean> {
+    const step: SetupStep = 'qwen3tts'
+    if (!(await this.voiceEnvReady())) {
+      log(step, 'Install the Python voice environment first.')
+      return false
+    }
+    const envPython = venvPython()
+    const pipCache = storageDir('pip-cache')
+    const pipEnv: NodeJS.ProcessEnv = { ...process.env, ...(pipCache ? { PIP_CACHE_DIR: pipCache } : {}) }
+    const nvidia = !isMac && (await quick('nvidia-smi', ['-L'], 5000)).ok
+    const torchReady = (await quick(envPython, ['-c', nvidia ? 'import torch,sys; sys.exit(0 if torch.cuda.is_available() else 1)' : 'import torch'], 60000)).ok
+    if (!torchReady) {
+      const torchArgs = ['-m', 'pip', 'install', '--upgrade', 'torch', ...(nvidia ? ['--index-url', 'https://download.pytorch.org/whl/cu128'] : [])]
+      log(step, nvidia ? 'Installing PyTorch with CUDA (about 2.5 GB)...' : 'Installing PyTorch (no NVIDIA GPU found: the voice will run on the CPU or Apple GPU)...')
+      if ((await run(envPython, torchArgs, (l) => log(step, l), { env: pipEnv })) !== 0) return false
+    }
+    log(step, 'Installing qwen-tts...')
+    if ((await run(envPython, ['-m', 'pip', 'install', '-U', 'qwen-tts', 'soundfile'], (l) => log(step, l), { env: pipEnv })) !== 0) return false
+
+    const qwen = normalizeQwenConfig(voiceService.getConfig()?.qwen3_tts)
+    const size = effectiveQwenSize(qwen)
+    log(step, `Downloading the Qwen3-TTS ${size} ${qwen.mode} model (about ${qwenDownloadSize(qwen)})...`)
+    const hf = storageDir('whisper')
+    const ok =
+      (await run(envPython, [scriptPath('capri_voice.py'), 'prepare-qwen', '--mode', qwen.mode, '--size', size], (l) => log(step, l), {
+        env: { ...process.env, PYTHONUTF8: '1', CAPRI_ALLOW_MODEL_DOWNLOAD: '1', ...(hf ? { HF_HOME: hf } : {}) }
+      })) === 0
+    if (ok) voiceService.stopTtsWorker()
+    return ok
   }
 
   private async installVoiceEnv(log: Logger, mayAskForPassword = true): Promise<boolean> {
