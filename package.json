@@ -26,7 +26,8 @@
     "dist:linux": "electron-vite build && electron-builder --linux",
     "build:mac-helper": "node scripts/build-mac-helper.mjs",
     "dist:mac": "npm run build:mac-helper && electron-vite build && electron-builder --mac --arm64",
-    "test:mac": "node tests/run.mjs"
+    "test:mac": "node tests/run.mjs",
+    "test:qwen-mac": "node scripts/test-qwen-cache.mjs && python3 -m unittest discover -s tests -p test_qwen_mac.py"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",

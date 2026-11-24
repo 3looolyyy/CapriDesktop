@@ -577,24 +577,35 @@ def load_qwen_tts(mode: str, size: str):
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
     if torch.cuda.is_available():
         device = "cuda:0"
         dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     elif getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        device, dtype = "mps", torch.float16
+        # fp16 overflows Qwen's generation logits on MPS. BF16 preserves the exponent
+        # range on macOS 14+, with fp32 for older MPS runtimes.
+        supports_bf16 = getattr(torch.backends.mps, "is_macos_or_newer", lambda *_: False)(14, 0)
+        device, dtype = "mps", torch.bfloat16 if supports_bf16 else torch.float32
     else:
         device, dtype = "cpu", torch.float32
 
     kwargs = {"device_map": device, "dtype": dtype}
-    try:
-        import flash_attn  # noqa: F401
-        kwargs["attn_implementation"] = "flash_attention_2"
-    except Exception:
-        kwargs["attn_implementation"] = "sdpa"
+    kwargs["attn_implementation"] = "sdpa"
+    if device.startswith("cuda"):
+        try:
+            import flash_attn  # noqa: F401
+            kwargs["attn_implementation"] = "flash_attention_2"
+        except Exception:
+            pass
     repo = QWEN_TTS_REPOS[key]
     sys.stderr.write(f"[Qwen3-TTS] Loading {repo} on {device} ({kwargs['attn_implementation']})\n")
-    model = Qwen3TTSModel.from_pretrained(repo, **kwargs)
+    # qwen-tts also inspects files through the Hub API when given a repo id. Resolve the
+    # snapshot first so an explicitly downloaded model can actually load while offline.
+    from huggingface_hub import snapshot_download
+    model_path = snapshot_download(repo, local_files_only=os.environ.get("CAPRI_ALLOW_MODEL_DOWNLOAD") != "1")
+    model = Qwen3TTSModel.from_pretrained(model_path, **kwargs)
     _qwen_state.update({"key": key, "model": model, "device": device})
     return model, device
 

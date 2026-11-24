@@ -15,7 +15,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { spawn, execFile } from 'child_process'
-import { speechModelsDir, voiceDataDir, localFfmpegPath, pythonEnvDir, scriptPath, toolsDir, venvPython } from './app-paths'
+import { huggingFaceHome, speechModelsDir, voiceDataDir, localFfmpegPath, pythonEnvDir, scriptPath, toolsDir, venvPython } from './app-paths'
 import { findOnPath, isMac, isWindows, killProcesses, linuxInstallCommand, linuxPackageManager } from './platform'
 import { ollamaService } from './ollama-service'
 import { voiceService } from './voice-service'
@@ -707,7 +707,7 @@ export class SetupService {
     }
     if (!this.qwenPackages.ok) return { ready: false, reason: 'qwen-tts is not installed' }
     const qwen = normalizeQwenConfig(requested ?? voiceService.getConfig()?.qwen3_tts)
-    const hf = storageDir('whisper')
+    const hf = huggingFaceHome()
     const res = await quick(
       py,
       [scriptPath('capri_voice.py'), 'check-qwen', '--mode', qwen.mode, '--size', effectiveQwenSize(qwen)],
@@ -784,7 +784,7 @@ export class SetupService {
     const qwen = normalizeQwenConfig(requested ?? voiceService.getConfig()?.qwen3_tts)
     const size = effectiveQwenSize(qwen)
     log(step, `Downloading the Qwen3-TTS ${size} ${qwen.mode} model (about ${qwenDownloadSize(qwen)})...`)
-    const hf = storageDir('whisper')
+    const hf = huggingFaceHome()
     const ok =
       (await run(envPython, [scriptPath('capri_voice.py'), 'prepare-qwen', '--mode', qwen.mode, '--size', size], (l) => log(step, l), {
         env: { ...process.env, PYTHONUTF8: '1', CAPRI_ALLOW_MODEL_DOWNLOAD: '1', ...(hf ? { HF_HOME: hf } : {}) }

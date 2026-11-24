@@ -8,7 +8,7 @@ import { app } from 'electron'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { pythonEnvDir, toolsDir } from './app-paths'
+import { huggingFaceHome, pythonEnvDir, toolsDir } from './app-paths'
 import { dirSize, qwenModels, whisperModels } from './storage-move'
 import { storageDir } from './storage-location'
 import { voiceService } from './voice-service'
@@ -36,7 +36,7 @@ function partPaths(id: InstalledPartId): string[] {
       return [path.join(toolsDir(), 'ffmpeg')]
     // Qwen weights are stored in the same Hugging Face cache as Whisper
     case 'qwen3tts':
-      return qwenModels(whisperHub()).map((name) => path.join(whisperHub(), 'hub', name))
+      return qwenModels(huggingFaceHome()).map((name) => path.join(huggingFaceHome(), 'hub', name))
   }
 }
 

@@ -1,7 +1,6 @@
-import { storageDir } from './storage-location'
 import { clearLanguageOf, detectLanguage, strayLanguageOf } from './language-detect'
 import { isCloudMode, llmFetch } from './llm-gateway'
-import { speechModelsDir, envFilePath, localFfmpegPath, pythonPath, scriptPath, voiceDataDir } from './app-paths'
+import { huggingFaceHome, speechModelsDir, envFilePath, localFfmpegPath, pythonPath, scriptPath, voiceDataDir } from './app-paths'
 import { spawn, ChildProcess } from 'child_process'
 import { stripLookTags } from './script/look-tags'
 import fs from 'fs'
@@ -114,8 +113,7 @@ export class VoiceService {
     const ffmpeg = localFfmpegPath()
     if (ffmpeg && !env.CAPRI_FFMPEG) env.CAPRI_FFMPEG = ffmpeg
     // Whisper's model weighs about 500 MB
-    const whisper = storageDir('whisper')
-    if (whisper) env.HF_HOME = whisper
+    env.HF_HOME = huggingFaceHome()
     return env
   }
 
