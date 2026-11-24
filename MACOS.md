@@ -114,6 +114,6 @@ The Apple Silicon port is included in the upstream 1.0.6 source. This build incl
 
 Mac validation now runs against these versions: updated Electron and service mocks let the scanner and agent lifecycle tests exercise current code. Game detection again honors the Mac request to recognize games that have Windows-only live adapters; it still does not claim live match telemetry on Mac.
 
-Windows-only automatic YouTube/TikTok mouse and browser-tab controls are not implemented on Mac. Native Mac app/browser launching, Spotify controls, manual scanning and the existing opt-in Mac screen comments remain available. AI app providers require their own installed CLI and user sign-in; their accounts are not bundled. ChatGPT plan sign-in from the previous personal build is not part of this source or public PR.
+Windows-only automatic YouTube/TikTok mouse and browser-tab controls are not implemented on Mac. Native Mac app/browser launching, Spotify controls, manual scanning and the existing opt-in Mac screen comments remain available. AI app providers require their own installed CLI and user sign-in; their accounts are not bundled.
 
 Build with Python 3.11 and FFmpeg installed separately: `npm ci`, `npm run typecheck`, `npm run test:mac`, then `npm run dist:mac`. Outputs are in `release/`. The local signing hook uses an available Apple Development identity or falls back to ad hoc signing; this is not a notarized public release.
