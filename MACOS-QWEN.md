@@ -30,6 +30,7 @@ On Apple A18 Pro, 8 GB unified memory, macOS 27.0, Python 3.11.18, qwen-tts 0.1.
 - The real worker generated two English lines with `HF_HUB_OFFLINE=1`, strict Qwen mode and no fallback. Both responses reported `provider: qwen3-tts` and `device: mps`.
 - The two-line run, including model loading, took 24.82 seconds. This is a local smoke-test measurement, not a latency guarantee. The decoded outputs were 1.51 and 1.98 seconds long, finite and non-silent; both used the +32 Hz pitch setting. The worker reused the loaded model and exited successfully after stdin closed.
 - FP16 initially failed with non-finite generation probabilities; BF16 completed the same requests. Loading by repository ID initially failed offline; using the local snapshot resolved it.
+- The independent packaged app reported the model ready and returned a successful preview through preload/IPC in 19.48 seconds, leaving the saved provider unchanged. Closing the app also stopped its Qwen worker.
 - TypeScript checks, 11 GPU-budget tests and the standalone Mac cache/audio/MPS checks pass. Apple Silicon app and DMG packaging/signature checks pass.
 
 The 1.7B, Voice Design and real voice-cloning models were not downloaded or runtime tested on this 8 GB Mac. MPS model replacement is tested with mocks, not a second live model. Older macOS/FP32 fallback, Intel, Windows/CUDA and Linux runtime were not tested. The build is locally development-signed and is not notarized.
